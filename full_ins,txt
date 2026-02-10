@@ -1,0 +1,414 @@
+VoiceTracer WebApp UI/UX Specification
+
+Brand Identity
+Name: VoiceTracer
+Tagline: "Preserve Your Voice. Navigate AI with Autonomy."
+Core Metaphor: A compass for navigating between human authenticity and AI assistance—never losing your bearings.
+
+Theme System (5 Professional Palettes)
+Theme 1: Modern SaaS Blue (Default)
+Personality: Trustworthy, institutional, accessible
+Background Primary: #F8FAFC
+Surface/Card: #FFFFFF
+Secondary BG: #EEF2F7
+Text Primary: #0F172A
+Text Secondary: #475569
+Text Muted: #94A3B8
+Accent Primary: #2563EB
+Accent Hover: #1D4ED8
+Accent Subtle: #93C5FD
+Success: #16A34A
+Warning: #F59E0B
+Danger: #DC2626
+Chart Original (Human): #16A34A
+Chart Edited (AI): #DC2626
+Chart Negotiated: #2563EB
+Theme 2: Dark Professional
+Personality: Power-user, extended sessions, serious analysis
+Background Primary: #0B1120
+Surface/Card: #111827
+Elevated Surface: #1F2933
+Text Primary: #E5E7EB
+Text Secondary: #9CA3AF
+Text Muted: #6B7280
+Accent Primary: #38BDF8
+Accent Hover: #0EA5E9
+Accent Secondary: #22D3EE
+Success: #34D399
+Warning: #FBBF24
+Danger: #F87171
+Chart Original: #34D399
+Chart Edited: #F87171
+Chart Negotiated: #38BDF8
+Theme 3: Neutral Corporate (Research/Government)
+Personality: Maximum credibility, zero distraction, formal
+Background Primary: #F5F7FA
+Surface/Card: #FFFFFF
+Divider: #E5E7EB
+Text Primary: #111827
+Text Secondary: #374151
+Text Muted: #6B7280
+Accent Primary: #374151
+Accent Secondary: #4B5563
+Accent Teal: #0F766E
+Success: #0F766E
+Warning: #B45309
+Danger: #991B1B
+Chart Original: #0F766E
+Chart Edited: #991B1B
+Chart Negotiated: #1D4ED8
+Theme 4: Productivity Green (Growth/Health)
+Personality: Positive action, sustainability, progress
+Background Primary: #F7FDF9
+Surface/Card: #FFFFFF
+Secondary BG: #ECFDF5
+Text Primary: #064E3B
+Text Secondary: #065F46
+Text Muted: #6EE7B7
+Accent Primary: #16A34A
+Accent Hover: #15803D
+Accent Light: #22C55E
+Success: #16A34A
+Warning: #F97316
+Danger: #DC2626
+Chart Original: #16A34A
+Chart Edited: #DC2626
+Chart Negotiated: #2563EB
+Theme 5: Elegant Tech Purple (AI/Premium)
+Personality: Innovative, creative, premium positioning
+Background Primary: #FAFAFF
+Surface/Card: #FFFFFF
+Secondary BG: #F3F4FF
+Text Primary: #1E1B4B
+Text Secondary: #4338CA
+Text Muted: #A5B4FC
+Accent Primary: #6366F1
+Accent Hover: #4F46E5
+Accent Secondary: #A78BFA
+Success: #22C55E
+Warning: #F59E0B
+Danger: #EF4444
+Chart Original: #22C55E
+Chart Edited: #EF4444
+Chart Negotiated: #6366F1
+
+Global Layout Structure
+Navigation Architecture
+Header (Fixed, 64px height)
+Left: Logo (VoiceTracer wordmark + compass icon)
+Center: Genre Selector (Academic Writing dropdown, locked)
+Right: Theme Toggle (icon cycle) | Help (?) | User Profile
+Sidebar (Collapsible, 280px expanded, 72px collapsed)
+Analysis
+Repair Preview
+Calibration
+Documentation
+Settings
+Main Content Area
+Dynamic width (responsive grid)
+Max-width: 1440px centered
+Padding: 24px-48px based on viewport
+Footer (Minimal, 48px)
+Version number | Thesis citation | Privacy
+
+Screen 1: Upload & Configuration
+Layout: Centered Card Layout
+Hero Section (Top 30%)
+Large compass icon with pulse animation
+Headline: "Compare Your Original and AI-Edited Text"
+Subheadline: "Measure voice preservation across 8 stylistic dimensions"
+Configuration Card (Center)
+Step 1: Genre Selection [Locked to "Academic Writing" with info tooltip]
+Step 2: Prompt Declaration
+Text field pre-filled: "Fix grammar and fluency"
+Edit enabled with warning if changed
+Step 3: Text Upload
+Two-column drop zones:
+Left: "Original Draft" (green border, human icon)
+Right: "AI-Edited Version" (red border, robot icon)
+Paste text option below each
+Word count indicators (target: 200-500 words)
+Step 4: Calibration Toggle
+"Use default standards" (checked) or "Adjust thresholds"
+Primary Action
+Button: "Analyze Voice Preservation" (full width, accent color, disabled until both texts present)
+
+Screen 2: Analysis Dashboard
+Layout: Three-Column Grid (Responsive to Stacked)
+Left Column (30%): Executive Summary
+Voice Preservation Score Card (Prominent)
+Large circular gauge (0-100)
+Color-coded: Green (80-100), Yellow (60-79), Orange (40-59), Red (0-39)
+Score label: "Strong Voice Preserved" / "Moderate Homogenization" / etc.
+Sub-score breakdown (5 components as mini bars):
+Authenticity Markers (25%)
+Lexical Identity (20%)
+Structural Identity (20%)
+Stylistic Identity (25%)
+Voice Consistency (10%)
+Quick Stats
+Word count delta
+Sentence count delta
+AI-isms detected count
+Action Button
+"Open Repair Preview" (if score < 80)
+
+Center Column (40%): Metric Deep-Dive
+8-Metric Radar Chart (Full width of column)
+Interactive: hover for values
+Toggle layers: Original (green), Edited (red), Human Standard (dashed gray), AI Standard (dotted gray)
+Metric Cards (Scrollable list)
+Each card expandable:
+Header: Metric name | Original value | Edited value | Delta arrow | Verdict badge
+Expanded view:
+Mini bar chart comparing to standards
+Explanation text: "What this measures"
+Interpretation: "Your edited text shows 47% less hedging than typical human academic writing"
+Verdict logic: Why "Compromised" or "Preserved"
+Metrics in order:
+Burstiness (Rhythm & Variation)
+Lexical Diversity (Vocabulary Range)
+Syntactic Complexity (Sentence Structure)
+AI-ism Likelihood (Formulaic Phrases)
+Function Word Ratio (Connector Words)
+Discourse Marker Density (Signposting)
+Information Density (Content Substance)
+Epistemic Hedging (Uncertainty Markers)
+
+Right Column (30%): Visual Evidence
+Sentence Rhythm Visualization
+Line chart: Word count per sentence across text progression
+Green line (original) vs Red line (edited)
+Highlight divergence points
+AI-isms Detected List
+Expandable accordion
+Each item: Phrase | Context snippet | Suggestion type (connector/cliché/genericity)
+"Moreover" → flagged as "connector overuse"
+Text Comparison (Mini)
+Side-by-side scrollable excerpts
+Synchronized scrolling
+Highlight sentences with largest metric drops
+
+Screen 3: Repair Preview (The Core Intervention)
+Layout: Full-Width Workspace
+Context Header
+"Repair Preview: Negotiating Voice Preservation"
+Current focus: [Metric name with low score]
+Navigation: Previous | Next compromised metric
+Three-Panel Comparison (The Negotiation Interface)
+Panel 1: Original (Left, 30%)
+Label: "Your Original Voice" + green indicator
+Full text of flagged sentence/paragraph
+Highlighted: The specific feature being compromised (e.g., hedging word "might")
+Metadata: Original metric score
+Panel 2: AI-Edited (Center, 30%)
+Label: "AI Edit" + red indicator
+Same text after AI editing
+Highlighted: What was changed (e.g., "demonstrates" replacing "suggests")
+Annotation: "AI removed uncertainty marker to increase assertiveness"
+Metadata: New metric score, delta
+Panel 3: Negotiated Options (Right, 40%)
+Label: "Your Choice" + blue/purple indicator
+Option A: Balanced compromise (pre-selected)
+Option B: More human-like (restore original feature)
+Option C: More AI-like (accept edit fully)
+Option D: Custom (editable field with real-time score update)
+Selection Mechanism
+Radio buttons for A/B/C
+Text area for D with character count
+"Apply Selection" button
+Live preview: Score updates as user types in custom field
+Annotation Panel (Below three columns)
+Neutral explanation: "AI changed X to Y. This affects your epistemic stance by..."
+Disciplinary note: "In humanities, hedging is expected. In hard sciences, assertiveness may be preferred."
+Impact statement: "Restoring hedging improves Authenticity Markers by 12 points"
+Navigation Actions
+"Skip to Next Issue" | "Accept All AI Edits" (with warning) | "Restore All Original" | "Generate Final Text"
+
+Screen 4: Calibration Panel
+Layout: Settings Form
+Threshold Adjustments
+For each of 8 metrics:
+Human Standard: [slider 0-100]
+AI Standard: [slider 0-100]
+Sensitivity: [dropdown: Strict/Moderate/Permissive]
+Reset to default per metric
+Genre-Specific Presets
+Academic Writing (current)
+Creative Writing
+Professional Communication
+[Locked: Upgrade to Pro]
+Impact Preview
+Sample text analysis updates in real-time as sliders move
+"If applied to previous analysis, verdicts would change: X→Y"
+Save Actions
+"Save as Custom Profile" | "Export Calibration Settings" | "Reset All"
+
+Screen 5: Documentation Export
+Layout: Report Builder
+Export Configuration
+Report type: PDF / Word / Excel / JSON
+Sections to include:
+[x] Executive Summary
+[x] Full Metric Analysis
+[x] Visualizations
+[x] Repair Preview Decisions
+[x] Original vs Final Text Comparison
+[x] Authorship Documentation Statement
+Authorship Documentation Statement (Auto-generated)
+plainCopy
+This document certifies that [User Name] engaged in AI-assisted writing 
+with systematic voice preservation monitoring using VoiceTracer.
+
+Process:
+1. Original draft composed without AI assistance
+2. AI editing applied with prompt: "[prompt text]"
+3. Voice preservation monitored across 8 stylistic dimensions
+4. Negotiated revisions made to preserve linguistic identity
+5. Final voice preservation score: [X/100]
+
+This documentation demonstrates intentional, monitored, and autonomous 
+use of AI writing assistance.
+Preview Pane
+Scrollable report preview
+Page thumbnails for PDF
+Actions
+"Generate Report" | "Download" | "Email to Advisor" | "Save to Library"
+
+Screen 6: Settings
+Layout: Standard Settings Form
+Preferences
+Default theme
+Default genre
+Default calibration strictness
+Email notifications (analysis complete, reports ready)
+About
+Version info
+Methodology documentation
+Contact (prompt me to give my email)
+
+Component Library
+Buttons
+Primary
+Background: Accent Primary
+Text: White
+Hover: Accent Hover
+Padding: 12px 24px
+Border-radius: 6px
+Font: 600 weight
+Secondary
+Background: Transparent
+Border: 1px solid Accent Primary
+Text: Accent Primary
+Hover: Accent Subtle background
+Tertiary
+Background: Transparent
+Text: Text Secondary
+Hover: Text Primary
+Danger
+Background: Danger color
+Text: White
+Cards
+Standard Card
+Background: Surface
+Border-radius: 8px
+Shadow: 0 1px 3px rgba(0,0,0,0.1)
+Padding: 24px
+Border: 1px solid Divider (in light themes)
+Elevated Card (for key metrics)
+Shadow: 0 4px 6px rgba(0,0,0,0.1)
+Border-left: 4px solid Accent Primary
+Data Visualization
+Radar Chart
+8 axes, labeled
+Filled areas with 50% opacity
+Interactive tooltips
+Legend toggleable
+Bar Charts
+Vertical for metric comparison
+Horizontal for component breakdowns
+Color coding: Green (original), Red (edited), Blue (negotiated)
+Line Charts
+For sentence rhythm
+Smooth curves
+Highlight points on hover
+Gauge/Circular Progress
+For Voice Preservation Score
+Animated on load
+Color transitions at thresholds
+Form Elements
+Text Areas
+Min-height: 200px
+Character counter
+Paste detection
+Sliders
+For calibration
+Dual-handle for range (Human-AI standards)
+Value tooltips
+Dropdowns
+Genre selector
+Theme selector (with color preview)
+
+Responsive Behavior
+Desktop (1440px+)
+Full three-column layouts
+Sidebar expanded by default
+All visualizations visible
+Tablet (768px-1439px)
+Two-column layouts
+Sidebar collapsible
+Stacked metric cards
+Mobile (<768px)
+Single column
+Bottom navigation instead of sidebar
+Simplified visualizations
+Repair Preview as swipeable cards (Original → AI → Negotiated)
+
+Micro-Interactions & Animations
+On Load
+Compass icon: Gentle rotation (120°) then settle
+Score gauge: Animate from 0 to value (1s ease-out)
+Cards: Staggered fade-in (50ms delay each)
+On Analysis Complete
+Success: Subtle pulse on score
+Warning/Alert: Gentle shake on compromised metrics
+Confetti (restrained) if score >90
+On Theme Switch
+Smooth color transition (300ms)
+No page reload
+On Repair Selection
+Real-time score update (300ms transition)
+Highlight selected option with border animation
+"Apply" button enables with bounce
+
+Accessibility Requirements
+WCAG 2.1 AA compliance
+All charts have text alternatives
+Color not sole indicator (patterns/icons accompany colors)
+Keyboard navigation for all interactions
+Screen reader optimized for metric announcements
+Reduced motion option respects prefers-reduced-motion
+
+Asset Checklist
+Icons (Lucide or Phosphor, consistent set)
+Compass (logo)
+Upload, Download
+ChevronLeft, ChevronRight
+Settings, HelpCircle
+Check, X, AlertTriangle
+BarChart3, PieChart, Activity
+FileText, FileSpreadsheet, FileJson
+Moon, Sun (theme toggle)
+RotateCcw (reset)
+Save, Share
+User, LogOut
+Illustrations
+Empty state: "No analysis yet" (compass waiting)
+Success state: Analysis complete (compass oriented)
+Error state: Upload failed
+Fonts
+Primary: Inter or Geist (sans-serif, highly legible)
+Monospace: JetBrains Mono or Fira Code (for text comparison)
+
+This specification provides complete visual and structural foundation for building VoiceTracer as a professional research tool suitable for MA thesis defense and beyond.
+
