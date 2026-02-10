@@ -1,0 +1,214 @@
+1. Modern SaaS Blue (Clean & Trust-Focused)
+
+Best for: Dashboards, fintech, ed-tech, enterprise apps
+
+Background
+
+Primary BG: #F8FAFC
+
+Surface / Card: #FFFFFF
+
+Secondary BG: #EEF2F7
+
+Text
+
+Primary Text: #0F172A
+
+Secondary Text: #475569
+
+Muted Text: #94A3B8
+
+Primary / Accent
+
+Primary: #2563EB
+
+Hover: #1D4ED8
+
+Subtle Accent: #93C5FD
+
+Visualization (Charts)
+
+Series 1: #2563EB
+
+Series 2: #16A34A
+
+Series 3: #F59E0B
+
+Series 4: #DC2626
+
+Grid / Axis: #CBD5E1
+
+Why it works:
+Blue ensures trust, neutral grays reduce eye fatigue, chart colors stay distinguishable.
+
+2. Dark Professional (Low-Eye-Strain UI)
+
+Best for: Developer tools, analytics, power-user apps
+
+Background
+
+Primary BG: #0B1120
+
+Surface / Card: #111827
+
+Elevated Surface: #1F2933
+
+Text
+
+Primary Text: #E5E7EB
+
+Secondary Text: #9CA3AF
+
+Muted Text: #6B7280
+
+Primary / Accent
+
+Primary: #38BDF8
+
+Hover: #0EA5E9
+
+Accent: #22D3EE
+
+Visualization
+
+Series 1: #38BDF8
+
+Series 2: #A78BFA
+
+Series 3: #34D399
+
+Series 4: #FBBF24
+
+Grid / Axis: #374151
+
+Why it works:
+High contrast without pure black, excellent for long sessions and dense data.
+
+3. Neutral Corporate (Ultra-Professional)
+
+Best for: Government, research platforms, B2B tools
+
+Background
+
+Primary BG: #F5F7FA
+
+Surface: #FFFFFF
+
+Divider BG: #E5E7EB
+
+Text
+
+Primary Text: #111827
+
+Secondary Text: #374151
+
+Muted Text: #6B7280
+
+Primary / Accent
+
+Primary: #374151
+
+Secondary: #4B5563
+
+Accent: #0F766E
+
+Visualization
+
+Series 1: #0F766E
+
+Series 2: #1D4ED8
+
+Series 3: #B45309
+
+Series 4: #991B1B
+
+Grid: #D1D5DB
+
+Why it works:
+Minimal color emotion → maximum seriousness and credibility.
+
+4. Product-Focused Green (Growth & Success)
+
+Best for: Health, productivity, sustainability apps
+
+Background
+
+Primary BG: #F7FDF9
+
+Surface: #FFFFFF
+
+Secondary BG: #ECFDF5
+
+Text
+
+Primary Text: #064E3B
+
+Secondary Text: #065F46
+
+Muted Text: #6EE7B7
+
+Primary / Accent
+
+Primary: #16A34A
+
+Hover: #15803D
+
+Accent: #22C55E
+
+Visualization
+
+Series 1: #16A34A
+
+Series 2: #2563EB
+
+Series 3: #F97316
+
+Series 4: #DC2626
+
+Grid: #BBF7D0
+
+Why it works:
+Green reads as success, progress, and positive action.
+
+5. Elegant Tech Purple (Premium Feel)
+
+Best for: AI tools, creative platforms, startup products
+
+Background
+
+Primary BG: #FAFAFF
+
+Surface: #FFFFFF
+
+Secondary BG: #F3F4FF
+
+Text
+
+Primary Text: #1E1B4B
+
+Secondary Text: #4338CA
+
+Muted Text: #A5B4FC
+
+Primary / Accent
+
+Primary: #6366F1
+
+Hover: #4F46E5
+
+Accent: #A78BFA
+
+Visualization
+
+Series 1: #6366F1
+
+Series 2: #22C55E
+
+Series 3: #F59E0B
+
+Series 4: #EF4444
+
+Grid: #E0E7FF
+
+Why it works:
+Feels modern and premium without hurting readability.
