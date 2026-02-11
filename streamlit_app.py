@@ -231,6 +231,18 @@ def format_metric(value: object) -> str:
 	return str(value)
 
 
+def _plotly_download_config() -> Dict[str, object]:
+	return {
+		"toImageButtonOptions": {
+			"format": "png",
+			"filename": "voicetracer-chart",
+			"height": 600,
+			"width": 900,
+			"scale": 2,
+		},
+	}
+
+
 _DIFF_TOKEN_RE = re.compile(r"\s+|[^\s]+")
 
 
@@ -809,7 +821,12 @@ def render_dashboard_screen() -> None:
 			""",
 			unsafe_allow_html=True,
 		)
-		st.plotly_chart(build_gauge_chart(analysis.score), use_container_width=True)
+		st.markdown("<div class='vt-card-caption'>Voice Preservation Gauge</div>", unsafe_allow_html=True)
+		st.plotly_chart(
+			build_gauge_chart(analysis.score),
+			use_container_width=True,
+			config=_plotly_download_config(),
+		)
 		st.markdown("<div class='vt-section-title'>Component Breakdown</div>", unsafe_allow_html=True)
 		components = {
 			"Authenticity Markers": analysis.components.get("Authenticity", 0.0),
@@ -851,6 +868,7 @@ def render_dashboard_screen() -> None:
 				analysis.metric_standards,
 			),
 			use_container_width=True,
+			config=_plotly_download_config(),
 		)
 		for metric in METRICS:
 			label = metric["label"]
@@ -900,7 +918,11 @@ def render_dashboard_screen() -> None:
 					xaxis=dict(range=[0, 100]),
 					height=200,
 				)
-				st.plotly_chart(mini, use_container_width=True)
+				st.plotly_chart(
+					mini,
+					use_container_width=True,
+					config=_plotly_download_config(),
+				)
 				st.markdown(
 					f"""
 					<div class="vt-muted">{metric['description']}</div>
@@ -912,11 +934,23 @@ def render_dashboard_screen() -> None:
 	with right_col:
 		st.markdown("<div class='vt-section-title'>Visual Evidence</div>", unsafe_allow_html=True)
 		st.caption("Sentence rhythm across the text (green: original, red: AI-edited).")
-		st.plotly_chart(build_line_chart(analysis.sentence_lengths), use_container_width=True)
+		st.plotly_chart(
+			build_line_chart(analysis.sentence_lengths),
+			use_container_width=True,
+			config=_plotly_download_config(),
+		)
 		st.caption("Component scores used for the final score.")
-		st.plotly_chart(build_bar_chart(analysis.components), use_container_width=True)
+		st.plotly_chart(
+			build_bar_chart(analysis.components),
+			use_container_width=True,
+			config=_plotly_download_config(),
+		)
 		st.caption("AI-ism category distribution.")
-		st.plotly_chart(build_pie_chart(analysis.ai_ism_categories), use_container_width=True)
+		st.plotly_chart(
+			build_pie_chart(analysis.ai_ism_categories),
+			use_container_width=True,
+			config=_plotly_download_config(),
+		)
 		with st.expander("AI-isms Detected"):
 			if analysis.ai_ism_phrases:
 				for phrase in analysis.ai_ism_phrases:
@@ -971,34 +1005,47 @@ def render_repair_preview() -> None:
 		delta_overall = projected_score - analysis.score
 		st.metric("Projected overall (estimate)", f"{projected_score:.1f}", delta=f"{delta_overall:+.1f}")
 	st.caption("Projected overall score is an estimate based on component weighting.")
-	col_left, col_mid, col_right = st.columns([1, 1, 1.3], gap="large")
-	with col_left:
-		st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Original Voice</div></div>", unsafe_allow_html=True)
-		st.text_area("Original", value=st.session_state.original_text, height=260, disabled=True)
-	with col_mid:
-		st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>AI Edit</div></div>", unsafe_allow_html=True)
-		st.text_area("AI Edit", value=st.session_state.edited_text, height=260, disabled=True)
-	with col_right:
-		st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Choice</div></div>", unsafe_allow_html=True)
-		choice = st.radio("Negotiated Options", options=["Option A", "Option B", "Option C", "Custom"], horizontal=True)
-		custom_text = ""
-		if choice == "Custom":
-			custom_text = st.text_area("Custom Rewrite", height=180)
-		st.button("Apply Selection", use_container_width=True)
-		if choice == "Custom" and custom_text.strip():
-			custom_standards = None
-			if not st.session_state.use_default_standards:
-				custom_standards = st.session_state.calibration
-			try:
-				custom_analysis = analyze_texts(
-					st.session_state.original_text,
-					custom_text,
-					custom_standards=custom_standards,
-				)
-				delta_custom = custom_analysis.score - analysis.score
-				st.metric("Custom overall score", f"{custom_analysis.score:.1f}", delta=f"{delta_custom:+.1f}")
-			except ValueError:
-				st.warning("Custom text is too short to score reliably.")
+	st.markdown("<div class='vt-section-title'>Panel Layout</div>", unsafe_allow_html=True)
+	st.caption("Use the slider to adjust panel height. The radio selects which panel to view.")
+	panel_height = st.slider("Panel height", min_value=200, max_value=520, value=300, step=20, key="panel_height")
+	active_panel = st.radio(
+		"View",
+		options=["Your Original Voice", "AI Edit", "Your Choice"],
+		horizontal=True,
+	)
+	panel_col = st.columns(1)[0]
+	with panel_col:
+		if active_panel == "Your Original Voice":
+			st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Original Voice</div></div>", unsafe_allow_html=True)
+			st.text_area("Original", value=st.session_state.original_text, height=panel_height, disabled=True)
+		elif active_panel == "AI Edit":
+			st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>AI Edit</div></div>", unsafe_allow_html=True)
+			st.text_area("AI Edit", value=st.session_state.edited_text, height=panel_height, disabled=True)
+		else:
+			st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Choice</div></div>", unsafe_allow_html=True)
+			choice = st.radio("Negotiated Options", options=["Option A", "Option B", "Option C", "Custom"], horizontal=True)
+			custom_text = ""
+			if choice == "Custom":
+				custom_text = st.text_area("Custom Rewrite", height=max(180, panel_height - 80))
+			st.button("Apply Selection", use_container_width=True)
+			if choice == "Custom" and custom_text.strip():
+				custom_standards = None
+				if not st.session_state.use_default_standards:
+					custom_standards = st.session_state.calibration
+				try:
+					custom_analysis = analyze_texts(
+						st.session_state.original_text,
+						custom_text,
+						custom_standards=custom_standards,
+					)
+					delta_custom = custom_analysis.score - analysis.score
+					st.metric(
+						"Custom overall score",
+						f"{custom_analysis.score:.1f}",
+						delta=f"{delta_custom:+.1f}",
+					)
+				except ValueError:
+					st.warning("Custom text is too short to score reliably.")
 
 	st.markdown("<div class='vt-section-title'>Repair Suggestions</div>", unsafe_allow_html=True)
 	suggestions = _build_repair_suggestions(
