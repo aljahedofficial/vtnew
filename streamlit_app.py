@@ -416,9 +416,18 @@ def _build_similarity_highlight(
 			for idx in range(len(words) - size + 1)
 		}
 
+	base_fourgrams = build_ngrams(base_words, 4)
 	base_trigrams = build_ngrams(base_words, 3)
 	base_bigrams = build_ngrams(base_words, 2)
 	word_hits = [False] * len(rewrite_words)
+	phrase_hits = [False] * len(rewrite_words)
+
+	for idx in range(len(rewrite_words) - 4 + 1):
+		ngram = " ".join(rewrite_words[idx : idx + 4])
+		if ngram in base_fourgrams:
+			for offset in range(4):
+				word_hits[idx + offset] = True
+				phrase_hits[idx + offset] = True
 
 	for size, ngrams in ((3, base_trigrams), (2, base_bigrams)):
 		if not ngrams:
@@ -439,7 +448,11 @@ def _build_similarity_highlight(
 		if _WORD_RE.fullmatch(token):
 			escaped = html.escape(token)
 			if word_index < len(word_hits) and word_hits[word_index]:
-				output.append(f"<span class=\"{highlight_class}\">{escaped}</span>")
+				classes = [highlight_class]
+				if phrase_hits[word_index]:
+					classes.append("vt-highlight-phrase")
+				class_attr = " ".join(classes)
+				output.append(f"<span class=\"{class_attr}\">{escaped}</span>")
 			else:
 				output.append(escaped)
 			word_index += 1
