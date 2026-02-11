@@ -1643,14 +1643,14 @@ def render_dashboard_screen() -> None:
 				"AI Source",
 				original_ai_ism,
 				getattr(analysis, "metric_results_original", None),
-				colors=["#16a34a", "#22c55e", "#4ade80", "#86efac", "#bbf7d0"],
+				colors=["#f59e0b", "#0f766e", "#7c3aed"],
 			)
 		with pie_right:
 			render_ai_ism_panel(
 				"Writer Rewrite",
 				analysis.ai_ism_categories,
 				analysis.metric_results,
-				colors=["#ef4444", "#f97316", "#f59e0b", "#facc15", "#fb7185"],
+				colors=["#dc2626", "#2563eb", "#16a34a"],
 			)
 		with st.expander("AI-isms Detected in Writer Rewrite"):
 			if analysis.ai_ism_phrases:
