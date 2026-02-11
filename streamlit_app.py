@@ -2203,7 +2203,9 @@ def render_repair_preview() -> None:
                     framing = "I think "
                 text = re.sub(r"^\s*", framing, text, count=1)
             if not has_hedge:
-                text = re.sub(r"\bshows\b", "suggests", text, count=1, flags=re.IGNORECASE)
+                text = re.sub(
+                    r"\bshows\b", "suggests", text, count=1, flags=re.IGNORECASE
+                )
             text = re.sub(
                 r"\b(Accordingly|Consequently|Therefore|Thus)\b,?\s*",
                 "",
@@ -2328,59 +2330,8 @@ def render_repair_preview() -> None:
         key="repair_notes",
     )
 
-    # --- Navigation Actions (requested names) ---
-    st.markdown(
-        "<div class='vt-section-title'>Navigation Actions</div>", unsafe_allow_html=True
-    )
-    action_left, action_mid1, action_mid2, action_right = st.columns(4)
-    with action_left:
-        if st.button("Skip to Next Issue", use_container_width=True):
-            if st.session_state.repair_metric_index < len(focus_options) - 1:
-                st.session_state.repair_metric_index += 1
-                st.rerun()
-
-    with action_mid1:
-        # Warning-confirm flow
-        accept_all = st.button("Accept All AI Edits", use_container_width=True)
-        if accept_all:
-            st.session_state.repair_accept_all_confirm = True
-        if st.session_state.get("repair_accept_all_confirm"):
-            st.warning(
-                "Accepting the AI draft may increase AI similarity. Confirm to proceed.",
-            )
-            confirm_col, cancel_col = st.columns(2)
-            with confirm_col:
-                if st.button("Confirm accept AI draft", use_container_width=True):
-                    st.session_state.repair_negotiated_text = st.session_state.ai_text
-                    st.session_state.repair_accept_all_confirm = False
-                    st.success("Negotiated text set to AI draft.")
-            with cancel_col:
-                if st.button("Cancel", use_container_width=True):
-                    st.session_state.repair_accept_all_confirm = False
-
-    with action_mid2:
-        if st.button("Restore All Original", use_container_width=True):
-            # In this workflow, 'original' is the AI draft (Panel 1)
-            st.session_state.repair_negotiated_text = st.session_state.ai_text
-            st.info("Restored negotiated text to the AI draft.")
-
-    with action_right:
-        if st.button("Generate Final Text", use_container_width=True):
-            final_text = (
-                st.session_state.get("repair_negotiated_text") or negotiated_text
-            )
-            st.session_state.final_text = final_text
-            st.success("Final text generated (see below).")
-
-    if st.session_state.get("final_text"):
-        st.markdown(
-            "<div class='vt-section-title'>Final Text</div>", unsafe_allow_html=True
-        )
-        st.text_area(
-            "Final text",
-            value=st.session_state.final_text,
-            height=260,
-        )
+    # Remove in-page Navigation Actions + Final Text output; rely on the global "Next step" button.
+    return
 
 
 def render_calibration(local_storage: LocalStorage | None) -> None:
@@ -2456,11 +2407,13 @@ def render_calibration(local_storage: LocalStorage | None) -> None:
 
 def render_documentation_export() -> None:
     st.markdown(
-        "<div class='vt-section-title'>Documentation Export</div>", unsafe_allow_html=True
+        "<div class='vt-section-title'>Documentation Export</div>",
+        unsafe_allow_html=True,
     )
     st.selectbox("Report Type", options=["PDF", "Word", "Excel", "JSON"])
     st.markdown(
-        "<div class='vt-section-title'>Sections to Include</div>", unsafe_allow_html=True
+        "<div class='vt-section-title'>Sections to Include</div>",
+        unsafe_allow_html=True,
     )
     for section in [
         "Executive Summary",
@@ -2473,7 +2426,7 @@ def render_documentation_export() -> None:
         st.checkbox(section, value=True)
     st.markdown(
         "<div class='vt-section-title'>Authorship Documentation Statement</div>",
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     st.text_area(
         "Statement",
