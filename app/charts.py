@@ -8,11 +8,13 @@ import plotly.graph_objects as go
 
 
 def build_radar_chart(
-    metrics: Dict[str, float],
+    original_metrics: Dict[str, float],
+    edited_metrics: Dict[str, float],
     metric_standards: Dict[str, Dict[str, float]] | None = None,
 ) -> go.Figure:
-    labels = list(metrics.keys())
-    values = list(metrics.values())
+    labels = list(edited_metrics.keys())
+    edited_values = [edited_metrics[label] for label in labels]
+    original_values = [original_metrics.get(label, 0) for label in labels]
 
     def format_standard(value: object) -> str:
         if isinstance(value, (int, float)):
@@ -29,24 +31,42 @@ def build_radar_chart(
             ai_value = format_standard(standards.get("ai"))
         customdata.append([human_value, ai_value])
 
-    fig = go.Figure(
-        data=[
-            go.Scatterpolar(
-                r=values + values[:1],
-                theta=labels + labels[:1],
-                customdata=customdata + customdata[:1],
-                fill="toself",
-                line_color="#f97316",
-                name="Edited score",
-                showlegend=True,
-                hovertemplate=(
-                    "<b>%{theta}</b><br>"
-                    "Score: %{r:.2f}<br>"
-                    "Human: %{customdata[0]} | AI: %{customdata[1]}"
-                    "<extra></extra>"
-                ),
-            )
-        ]
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatterpolar(
+            r=original_values + original_values[:1],
+            theta=labels + labels[:1],
+            customdata=customdata + customdata[:1],
+            fill="toself",
+            fillcolor="rgba(22, 163, 74, 0.45)",
+            line=dict(color="#16a34a", width=2),
+            name="Original",
+            showlegend=True,
+            hovertemplate=(
+                "<b>%{theta}</b><br>"
+                "Original: %{r:.2f}<br>"
+                "Human: %{customdata[0]} | AI: %{customdata[1]}"
+                "<extra></extra>"
+            ),
+        )
+    )
+    fig.add_trace(
+        go.Scatterpolar(
+            r=edited_values + edited_values[:1],
+            theta=labels + labels[:1],
+            customdata=customdata + customdata[:1],
+            fill="toself",
+            fillcolor="rgba(239, 68, 68, 0.45)",
+            line=dict(color="#ef4444", width=2),
+            name="AI-Edited",
+            showlegend=True,
+            hovertemplate=(
+                "<b>%{theta}</b><br>"
+                "AI-Edited: %{r:.2f}<br>"
+                "Human: %{customdata[0]} | AI: %{customdata[1]}"
+                "<extra></extra>"
+            ),
+        )
     )
 
     if metric_standards and labels:
@@ -57,7 +77,7 @@ def build_radar_chart(
                 r=human_values + human_values[:1],
                 theta=labels + labels[:1],
                 mode="lines",
-                line=dict(color="#16a34a", width=2),
+                line=dict(color="#16a34a", width=2, dash="dash"),
                 name="Human standard",
                 hoverinfo="skip",
             )
@@ -67,7 +87,7 @@ def build_radar_chart(
                 r=ai_values + ai_values[:1],
                 theta=labels + labels[:1],
                 mode="lines",
-                line=dict(color="#ef4444", width=2),
+                line=dict(color="#ef4444", width=2, dash="dot"),
                 name="AI standard",
                 hoverinfo="skip",
             )
@@ -103,7 +123,7 @@ def build_line_chart(sentence_lengths: Dict[str, List[int]]) -> go.Figure:
                 y=values,
                 mode="lines+markers",
                 name=label,
-                line=dict(color=color),
+                line=dict(color=color, shape="spline"),
                 marker=dict(color=color),
             )
         )
@@ -121,15 +141,16 @@ def build_bar_chart(components: Dict[str, float]) -> go.Figure:
     fig = go.Figure(
         data=[
             go.Bar(
-                x=labels,
-                y=values,
+                x=values,
+                y=labels,
+                orientation="h",
                 marker_color="#2563eb",
             )
         ]
     )
     fig.update_layout(
         margin=dict(l=20, r=20, t=30, b=20),
-        yaxis=dict(range=[0, 100]),
+        xaxis=dict(range=[0, 100]),
     )
     return fig
 

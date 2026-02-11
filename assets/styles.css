@@ -1,14 +1,98 @@
-/* Minimal UI polish for VoiceTracer */
+/* VoiceTracer UI styling */
 
 :root {
-  --vt-accent: #2563eb;
+  --vt-bg: #f5f7fa;
   --vt-surface: #ffffff;
-  --vt-border: #e2e8f0;
+  --vt-secondary: #f5f7fa;
+  --vt-text: #111827;
+  --vt-text-secondary: #374151;
+  --vt-text-muted: #6b7280;
+  --vt-accent: #374151;
+  --vt-accent-hover: #4b5563;
+  --vt-accent-subtle: #e5e7eb;
+  --vt-success: #0f766e;
+  --vt-warning: #b45309;
+  --vt-danger: #991b1b;
+  --vt-divider: #e5e7eb;
+  --vt-chart-original: #0f766e;
+  --vt-chart-edited: #991b1b;
+  --vt-chart-negotiated: #1d4ed8;
+}
+
+body {
+  color: var(--vt-text);
+}
+
+.stApp {
+  background: var(--vt-bg);
+}
+
+.block-container {
+  max-width: 1440px;
+  padding-top: 24px;
+}
+
+.vt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vt-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--vt-text);
+}
+
+.vt-tagline {
+  font-size: 0.9rem;
+  color: var(--vt-text-secondary);
+}
+
+.vt-hero {
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-divider);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.vt-compass {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+  animation: vt-pulse 2.4s ease-in-out infinite;
+}
+
+.vt-hero-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--vt-text);
+}
+
+.vt-hero-sub {
+  font-size: 0.9rem;
+  color: var(--vt-text-secondary);
+}
+
+@keyframes vt-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
 }
 
 .vt-card {
   background: var(--vt-surface);
-  border: 1px solid var(--vt-border);
+  border: 1px solid var(--vt-divider);
   border-radius: 8px;
   padding: 16px;
 }
@@ -16,26 +100,26 @@
 .vt-card-title {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--vt-text);
   margin-bottom: 6px;
 }
 
 .vt-card-value {
   font-size: 1.6rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--vt-text);
   margin-bottom: 4px;
 }
 
 .vt-card-caption {
   font-size: 0.85rem;
-  color: #475569;
+  color: var(--vt-text-secondary);
 }
 
 .vt-metric-rows {
   margin-top: 8px;
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--vt-text-secondary);
 }
 
 .vt-metric-row {
@@ -44,34 +128,37 @@
   padding: 2px 0;
 }
 
+.vt-metric-header {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--vt-text-secondary);
+}
+
 .vt-metric-detail {
   margin-top: 6px;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--vt-text-muted);
 }
 
 .vt-section-title {
   font-size: 1.1rem;
   font-weight: 700;
   margin: 8px 0 12px 0;
-  color: #0f172a;
+  color: var(--vt-text);
 }
 
 .vt-muted {
-  color: #64748b;
+  color: var(--vt-text-muted);
   font-size: 0.85rem;
-}
-
-.vt-muted ul {
-  margin: 6px 0 0 18px;
-  padding: 0;
 }
 
 .vt-logo-fallback {
   width: 56px;
   height: 56px;
   border-radius: 12px;
-  background: #2563eb;
+  background: var(--vt-accent);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -80,10 +167,25 @@
   letter-spacing: 0.5px;
 }
 
+.vt-badge {
+  background: var(--vt-accent-subtle);
+  color: var(--vt-text);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+}
+
 .vt-subtle {
   transition: background-color 160ms ease, border-color 160ms ease;
 }
 
 .vt-subtle:hover {
   border-color: var(--vt-accent);
+}
+
+.vt-footer {
+  text-align: center;
+  color: var(--vt-text-muted);
+  font-size: 0.8rem;
+  margin-top: 16px;
 }

@@ -40,13 +40,17 @@ class TextStats:
 class AnalysisResult:
     score: float
     classification: str
-    metrics: Dict[str, float]
+    metrics_edited: Dict[str, float]
+    metrics_original: Dict[str, float]
     components: Dict[str, float]
     metric_standards: Dict[str, Dict[str, float]]
+    metric_results: Dict[str, MetricResult]
+    consistency_score: float
     word_delta: int
     sentence_delta: int
     ai_ism_total: int
     ai_ism_categories: Dict[str, int]
+    ai_ism_phrases: List[Dict]
     sentence_lengths: Dict[str, List[int]]
     original_word_count: int
     edited_word_count: int
@@ -1003,11 +1007,21 @@ class VoicePreservationScore:
         return {"label": "Severe Homogenization", "color": "red", "level": 4}
 
 
-def analyze_texts(original_text: str, edited_text: str) -> AnalysisResult:
-    engine = VoicePreservationScore()
+def analyze_texts(
+    original_text: str,
+    edited_text: str,
+    custom_standards: Optional[Dict[str, Dict[str, float]]] = None,
+) -> AnalysisResult:
+    engine = VoicePreservationScore(
+        CalibrationStandards(custom_standards) if custom_standards else None
+    )
     result = engine.analyze(original_text, edited_text)
 
-    metrics = _format_metric_scores(result["metric_results"])
+    edited_metric_results = result["metric_results"]
+    original_metric_results = _calculate_metric_results(engine, original_text)
+
+    metrics_edited = _format_metric_scores(edited_metric_results)
+    metrics_original = _format_metric_scores(original_metric_results)
     components = _format_component_scores(result["component_scores"])
     classification = result["classification"]["label"]
     metric_standards = _format_metric_standards(engine.standards)
@@ -1015,9 +1029,9 @@ def analyze_texts(original_text: str, edited_text: str) -> AnalysisResult:
     original_stats = result["original_stats"]
     edited_stats = result["edited_stats"]
 
-    ai_ism_categories = result["metric_results"]["ai_ism_likelihood"].details.get(
-        "category_breakdown", {}
-    )
+    ai_ism_details = edited_metric_results["ai_ism_likelihood"].details
+    ai_ism_categories = ai_ism_details.get("category_breakdown", {})
+    ai_ism_phrases = ai_ism_details.get("detected_phrases", [])
 
     sentence_lengths = {
         "Original": _sentence_lengths(original_text),
@@ -1027,13 +1041,17 @@ def analyze_texts(original_text: str, edited_text: str) -> AnalysisResult:
     return AnalysisResult(
         score=result["final_score"],
         classification=classification,
-        metrics=metrics,
+        metrics_edited=metrics_edited,
+        metrics_original=metrics_original,
         components=components,
         metric_standards=metric_standards,
+        metric_results=edited_metric_results,
+        consistency_score=result["consistency_score"],
         word_delta=edited_stats["word_count"] - original_stats["word_count"],
         sentence_delta=edited_stats["sentence_count"] - original_stats["sentence_count"],
         ai_ism_total=sum(ai_ism_categories.values()) if ai_ism_categories else 0,
         ai_ism_categories=ai_ism_categories,
+        ai_ism_phrases=ai_ism_phrases,
         sentence_lengths=sentence_lengths,
         original_word_count=original_stats["word_count"],
         edited_word_count=edited_stats["word_count"],
@@ -1088,6 +1106,17 @@ def _format_metric_standards(standards: CalibrationStandards) -> Dict[str, Dict[
             "ai": round(values["ai"], 4),
         }
     return formatted
+
+
+def _calculate_metric_results(
+    engine: "VoicePreservationScore",
+    text: str,
+) -> Dict[str, MetricResult]:
+    stats = engine.preprocessor.preprocess(text)
+    results: Dict[str, MetricResult] = {}
+    for key, metric in engine.metrics.items():
+        results[key] = metric.calculate(stats, engine.standards)
+    return results
 
 
 def _sentence_lengths(text: str) -> List[int]:
