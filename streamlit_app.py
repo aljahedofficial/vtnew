@@ -195,6 +195,116 @@ METRICS = [
 	},
 ]
 
+PRESET_SETS = [
+	{
+		"name": "Preset Set 1",
+		"human": (
+			"I drafted this paragraph after reviewing my notes and outlining the main idea. "
+			"The goal is to explain the concept in plain language and keep the flow natural. "
+			"I focused on clarity and avoided adding extra claims that I could not support."
+		),
+		"source": (
+			"The source material argues that consistent feedback loops improve learning outcomes. "
+			"It highlights that short, timely responses help learners adjust their approach. "
+			"The author also notes that feedback is most effective when tied to specific actions."
+		),
+		"prompt": (
+			"Rewrite the source material in a concise academic paragraph. Maintain key claims, "
+			"use formal tone, and avoid bullet points."
+		),
+		"ai": (
+			"Feedback loops are central to learning because they enable rapid adjustment and reinforcement. "
+			"Short, timely responses are especially effective when they target specific behaviors. "
+			"Accordingly, well-designed feedback mechanisms improve outcomes and sustain progress."
+		),
+		"paraphrase": (
+			"Learning improves when people receive quick, specific feedback that connects to what they just did. "
+			"The source emphasizes that targeted responses help learners correct course and stay engaged. "
+			"This makes feedback loops a practical tool for steady improvement."
+		),
+	},
+	{
+		"name": "Preset Set 2",
+		"human": (
+			"I wrote this section to summarize the discussion in a way that sounds like me. "
+			"I kept the sentences short and varied so the paragraph feels conversational. "
+			"The point is to show the logic without turning it into a list."
+		),
+		"source": (
+			"The report describes how urban green spaces reduce heat and improve air quality. "
+			"It notes measurable temperature drops near parks and tree-lined streets. "
+			"The authors conclude that planning policy should prioritize canopy coverage."
+		),
+		"prompt": (
+			"Compose an academic summary of the source material. Keep formal tone, preserve evidence, "
+			"and avoid introducing new data."
+		),
+		"ai": (
+			"Urban green spaces mitigate heat and improve air quality by increasing canopy coverage. "
+			"Studies report measurable temperature reductions near parks and tree corridors. "
+			"Therefore, planning policy should prioritize tree cover to enhance environmental outcomes."
+		),
+		"paraphrase": (
+			"The report shows that parks and tree-lined streets cool nearby areas and help clean the air. "
+			"Measured temperature drops support the case for more canopy in city design. "
+			"It argues that policy should treat tree cover as a core planning priority."
+		),
+	},
+	{
+		"name": "Preset Set 3",
+		"human": (
+			"This paragraph captures my initial interpretation of the findings, not a final conclusion. "
+			"I wanted the summary to sound grounded and careful, so I avoided dramatic language. "
+			"The phrasing reflects how I would explain it in a draft."
+		),
+		"source": (
+			"The study compares remote and in-person teams and finds similar productivity levels. "
+			"It reports higher satisfaction among remote teams when communication norms are clear. "
+			"The authors recommend structured check-ins to reduce ambiguity."
+		),
+		"prompt": (
+			"Summarize the findings in a formal paragraph. Emphasize comparison, highlight the "
+			"recommendation, and keep it concise."
+		),
+		"ai": (
+			"The study finds that remote and in-person teams show comparable productivity outcomes. "
+			"Remote teams report higher satisfaction when communication norms are explicit. "
+			"Consequently, the authors recommend structured check-ins to minimize ambiguity."
+		),
+		"paraphrase": (
+			"The research shows no major productivity gap between remote and in-person teams. "
+			"Satisfaction improves for remote groups when communication rules are spelled out. "
+			"It recommends scheduled check-ins to keep expectations clear."
+		),
+	},
+	{
+		"name": "Preset Set 4",
+		"human": (
+			"I am outlining the argument in a straightforward way so the reasoning stays easy to follow. "
+			"I kept the word choice simple and avoided over-explaining. "
+			"This is the kind of paragraph I would write before a full revision."
+		),
+		"source": (
+			"The article reviews data privacy practices and warns about opaque data sharing. "
+			"It identifies consent fatigue as a factor that reduces meaningful user choice. "
+			"The authors call for clearer disclosures and limited default data collection."
+		),
+		"prompt": (
+			"Write a formal summary that keeps the cautionary tone. Do not add new sources."
+		),
+		"ai": (
+			"The article cautions that opaque data sharing undermines user control and privacy. "
+			"It links consent fatigue to reduced meaningful choice in digital settings. "
+			"Accordingly, the authors call for clearer disclosures and restrained default collection."
+		),
+		"paraphrase": (
+			"The piece warns that unclear data sharing weakens user control and privacy. "
+			"It connects consent fatigue with less meaningful choice for users. "
+			"The authors argue for clearer disclosures and tighter default collection rules."
+		),
+	},
+]
+
 
 def load_css() -> None:
 	css_path = ASSETS_DIR / "styles.css"
@@ -730,6 +840,46 @@ def _coerce_calibration(data: object) -> Dict[str, Dict[str, float]] | None:
 	return coerced
 
 
+def _set_storage_item(
+	local_storage: LocalStorage | None,
+	item_key: str,
+	value: str,
+	key_prefix: str,
+) -> None:
+	if not local_storage:
+		return
+	op_key = _next_storage_key(key_prefix)
+	try:
+		local_storage.setItem(item_key, value, key=op_key)
+	except TypeError:
+		local_storage.setItem(item_key, value)
+
+
+def apply_preset(local_storage: LocalStorage | None, preset_index: int) -> None:
+	if preset_index < 0 or preset_index >= len(PRESET_SETS):
+		st.session_state.auto_load_notice = "Preset selection is invalid."
+		st.session_state.auto_load_notice_kind = "error"
+		return
+	preset = PRESET_SETS[preset_index]
+	st.session_state.human_text = preset["human"]
+	st.session_state.source_text = preset["source"]
+	st.session_state.ai_text = preset["ai"]
+	st.session_state.paraphrase_text = preset["paraphrase"]
+	st.session_state.prompt_text = preset["prompt"]
+	st.session_state.human_file_name = None
+	st.session_state.source_file_name = None
+	st.session_state.ai_file_name = None
+	st.session_state.paraphrase_file_name = None
+	_set_storage_item(local_storage, HUMAN_TEXT_KEY, preset["human"], "preset_human")
+	_set_storage_item(local_storage, SOURCE_TEXT_KEY, preset["source"], "preset_source")
+	_set_storage_item(local_storage, AI_TEXT_KEY, preset["ai"], "preset_ai")
+	_set_storage_item(local_storage, PARAPHRASE_TEXT_KEY, preset["paraphrase"], "preset_paraphrase")
+	_set_storage_item(local_storage, PROMPT_TEXT_KEY, preset["prompt"], "preset_prompt")
+	st.session_state.analysis = None
+	st.session_state.auto_load_notice = f"Loaded {preset['name']} into all sections."
+	st.session_state.auto_load_notice_kind = "success"
+
+
 def load_calibration(local_storage: LocalStorage | None) -> None:
 	if not local_storage or st.session_state.calibration_loaded:
 		return
@@ -935,6 +1085,17 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 			st.info(notice)
 		st.session_state.auto_load_notice = ""
 		st.session_state.auto_load_notice_kind = "info"
+	preset_options = [preset["name"] for preset in PRESET_SETS]
+	preset_col_left, preset_col_right = st.columns([3, 1])
+	with preset_col_left:
+		selected_preset = st.selectbox("Preset set", options=preset_options, index=0)
+	with preset_col_right:
+		st.button(
+			"Load Preset",
+			use_container_width=True,
+			on_click=apply_preset,
+			args=(local_storage, preset_options.index(selected_preset)),
+		)
 	section_top_left, section_top_right = st.columns(2, gap="large")
 
 	with section_top_left:
