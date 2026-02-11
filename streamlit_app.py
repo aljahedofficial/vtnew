@@ -1543,6 +1543,8 @@ def render_dashboard_screen() -> None:
 		for metric in METRICS:
 			label = metric["label"]
 			key = metric["key"]
+			description = metric["description"]
+			caption = metric["caption"]
 			original_value = analysis.metrics_original.get(label, 0.0)
 			edited_value = analysis.metrics_edited.get(label, 0.0)
 			delta = edited_value - original_value
@@ -1576,6 +1578,8 @@ def render_dashboard_screen() -> None:
 					verdict_condition = "normalized score $< 0.40$"
 				st.markdown(
 					f"""
+					- Definition: {description}
+					- Why it matters: {caption}
 					- AI Source value = {format_metric(original_value)} (formula: {formula_text})
 					- Writer Rewrite value = {format_metric(edited_value)} (formula: {formula_text})
 					- Delta = {format_metric(delta)} where $\Delta = \text{{Rewrite}} - \text{{AI Source}}$
