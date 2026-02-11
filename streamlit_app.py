@@ -520,25 +520,6 @@ def _render_similarity_metric(label: str, score: float, bar_color: str) -> None:
 			use_container_width=True,
 			config={"displayModeBar": False},
 		)
-	with right_col:
-		st.markdown(
-			f"""
-			<div class="vt-compare-wrapper">
-			  <div class="vt-compare-label">AI vs rewrite (cosine)</div>
-			  <div class="vt-similarity-panel">
-			    <div class="vt-similarity-block">
-			      <div class="vt-compare-label">AI Source</div>
-			      <div class="vt-compare-text">{ai_base_markup}</div>
-			    </div>
-			    <div class="vt-similarity-block">
-			      <div class="vt-compare-label">Rewrite</div>
-			      <div class="vt-compare-text">{ai_rewrite_markup}</div>
-			    </div>
-			  </div>
-			</div>
-			""",
-			unsafe_allow_html=True,
-		)
 
 
 def render_comparison_panel(
