@@ -227,3 +227,21 @@ def build_gauge_chart(score: float) -> go.Figure:
     )
     fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
     return fig
+
+
+def build_mini_gauge(score: float, bar_color: str) -> go.Figure:
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge",
+            value=score,
+            gauge={
+                "axis": {"range": [0, 100], "visible": False},
+                "bar": {"color": bar_color},
+                "steps": [
+                    {"range": [0, 100], "color": "rgba(15, 23, 42, 0.06)"},
+                ],
+            },
+        )
+    )
+    fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=80)
+    return fig

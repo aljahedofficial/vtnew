@@ -32,6 +32,7 @@ from app.analysis import CalibrationStandards, analyze_multitext
 from app.charts import (
 	build_bar_chart,
 	build_gauge_chart,
+	build_mini_gauge,
 	build_line_chart,
 	build_metric_standards_chart,
 	build_pie_chart,
@@ -502,6 +503,18 @@ def _render_similarity_panels(source_text: str, ai_text: str, rewrite_text: str)
 			</div>
 			""",
 			unsafe_allow_html=True,
+		)
+
+
+def _render_similarity_metric(label: str, score: float, bar_color: str) -> None:
+	label_col, gauge_col = st.columns([3, 1])
+	with label_col:
+		st.metric(label, f"{score * 100:.1f}%")
+	with gauge_col:
+		st.plotly_chart(
+			build_mini_gauge(score * 100, bar_color),
+			use_container_width=True,
+			config={"displayModeBar": False},
 		)
 	with right_col:
 		st.markdown(
@@ -1484,11 +1497,11 @@ def render_dashboard_screen() -> None:
 		source_similarity_ngram = getattr(analysis, "source_similarity_ngram", 0.0)
 		sim_left, sim_right = st.columns(2)
 		with sim_left:
-			st.metric("Source vs rewrite (cosine)", f"{source_similarity_cosine * 100:.1f}%")
-			st.metric("Source vs rewrite (n-gram)", f"{source_similarity_ngram * 100:.1f}%")
+			_render_similarity_metric("Source vs rewrite (cosine)", source_similarity_cosine, "#16a34a")
+			_render_similarity_metric("Source vs rewrite (n-gram)", source_similarity_ngram, "#16a34a")
 		with sim_right:
-			st.metric("AI vs rewrite (cosine)", f"{ai_similarity_cosine * 100:.1f}%")
-			st.metric("AI vs rewrite (n-gram)", f"{ai_similarity_ngram * 100:.1f}%")
+			_render_similarity_metric("AI vs rewrite (cosine)", ai_similarity_cosine, "#ef4444")
+			_render_similarity_metric("AI vs rewrite (n-gram)", ai_similarity_ngram, "#ef4444")
 		st.markdown(
 			"<div class='vt-muted'>Highlighted matches are based on overlapping phrases and shared words.</div>",
 			unsafe_allow_html=True,
@@ -1664,15 +1677,13 @@ def render_repair_preview() -> None:
 	ai_similarity_ngram = getattr(analysis, "ai_similarity_ngram", 0.0)
 	source_similarity_cosine = getattr(analysis, "source_similarity_cosine", 0.0)
 	source_similarity_ngram = getattr(analysis, "source_similarity_ngram", 0.0)
-	sim_left, sim_mid, sim_right, sim_far = st.columns(4)
+	sim_left, sim_right = st.columns(2)
 	with sim_left:
-		st.metric("AI vs rewrite (cosine)", f"{ai_similarity_cosine * 100:.1f}%")
-	with sim_mid:
-		st.metric("AI vs rewrite (n-gram)", f"{ai_similarity_ngram * 100:.1f}%")
+		_render_similarity_metric("Source vs rewrite (cosine)", source_similarity_cosine, "#16a34a")
+		_render_similarity_metric("Source vs rewrite (n-gram)", source_similarity_ngram, "#16a34a")
 	with sim_right:
-		st.metric("Source vs rewrite (cosine)", f"{source_similarity_cosine * 100:.1f}%")
-	with sim_far:
-		st.metric("Source vs rewrite (n-gram)", f"{source_similarity_ngram * 100:.1f}%")
+		_render_similarity_metric("AI vs rewrite (cosine)", ai_similarity_cosine, "#ef4444")
+		_render_similarity_metric("AI vs rewrite (n-gram)", ai_similarity_ngram, "#ef4444")
 	st.markdown(
 		"<div class='vt-muted'>Highlighted matches are based on overlapping phrases and shared words.</div>",
 		unsafe_allow_html=True,
