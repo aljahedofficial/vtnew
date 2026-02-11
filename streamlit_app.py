@@ -1701,18 +1701,14 @@ def render_dashboard_screen() -> None:
             ai_value = standards.get("ai", 0.0)
             formula_text = METRIC_FORMULAS.get(label, "formula unavailable")
             st.markdown(
-                f"""
-				<div class="vt-card vt-subtle">
-				  <div class="vt-card-title">{label}</div>
-				  <div class="vt-metric-header">
-				    <span>AI Source: {format_metric(original_value)}</span>
-				    <span>Writer Rewrite: {format_metric(edited_value)}</span>
-				    <span>Delta: {format_metric(delta)}</span>
-				    <span class="vt-badge">{verdict}</span>
-				  </div>
-				  <div class="vt-card-caption">{metric['caption']}</div>
-				</div>
-				""",
+                _render_glassmorphism_metric_card(
+                    label,
+                    original_value,
+                    edited_value,
+                    delta,
+                    verdict,
+                    caption,
+                ),
                 unsafe_allow_html=True,
             )
             with st.expander("Details"):
@@ -2416,6 +2412,173 @@ def render_settings() -> None:
         "<div class='vt-muted'>Version info | Methodology documentation | Contact</div>",
         unsafe_allow_html=True,
     )
+
+
+def _render_glassmorphism_metric_card(
+    label: str,
+    original_value: float,
+    edited_value: float,
+    delta: float,
+    verdict: str,
+    caption: str,
+) -> str:
+    # Determine badge color and animation
+    if verdict == "Compromised":
+        badge_class = "vt-badge-compromised"
+        badge_animation = "pulse"
+    else:
+        badge_class = "vt-badge-other"
+        badge_animation = ""
+
+    # Format values
+    original_str = f"{original_value:.2f}"
+    edited_str = f"{edited_value:.2f}"
+    delta_str = f"{delta:+.2f}"
+
+    # HTML with inline styles for glassmorphism
+    html = f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;500&display=swap');
+
+    .glass-card {{
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 20px;
+        margin: 10px 0;
+        position: relative;
+        overflow: hidden;
+        font-family: 'Inter', sans-serif;
+        color: #333;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }}
+
+    .glass-card::before {{
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7);
+        background-size: 200% 100%;
+        animation: gradient-shift 3s ease-in-out infinite;
+    }}
+
+    @keyframes gradient-shift {{
+        0% {{ background-position: 0% 50%; }}
+        50% {{ background-position: 100% 50%; }}
+        100% {{ background-position: 0% 50%; }}
+    }}
+
+    .glass-card:hover {{
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }}
+
+    .metric-title {{
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.5em;
+        font-weight: 700;
+        background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 10px;
+    }}
+
+    .status-badge {{
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: 500;
+        text-transform: uppercase;
+    }}
+
+    .vt-badge-compromised {{
+        background: #dc2626;
+        color: white;
+        animation: pulse 2s infinite;
+    }}
+
+    .vt-badge-other {{
+        background: #16a34a;
+        color: white;
+    }}
+
+    @keyframes pulse {{
+        0% {{ opacity: 1; }}
+        50% {{ opacity: 0.5; }}
+        100% {{ opacity: 1; }}
+    }}
+
+    .metrics {{
+        display: flex;
+        justify-content: space-around;
+        margin-top: 15px;
+    }}
+
+    .metric {{
+        text-align: center;
+        flex: 1;
+    }}
+
+    .metric-label {{
+        font-size: 0.9em;
+        color: #666;
+        margin-bottom: 5px;
+    }}
+
+    .metric-value {{
+        font-size: 1.2em;
+        font-weight: 600;
+    }}
+
+    .ai-source .metric-value {{ color: #2563eb; }}
+    .writer-rewrite .metric-value {{ color: #16a34a; }}
+    .delta .metric-value {{ color: #f59e0b; }}
+
+    .caption {{
+        margin-top: 15px;
+        font-size: 0.9em;
+        color: #888;
+        text-align: center;
+    }}
+
+    @media (max-width: 768px) {{
+        .metrics {{
+            flex-direction: column;
+        }}
+        .metric {{
+            margin-bottom: 10px;
+        }}
+    }}
+    </style>
+
+    <div class="glass-card">
+        <div class="metric-title">{label}</div>
+        <span class="status-badge {badge_class}">{verdict}</span>
+        <div class="metrics">
+            <div class="metric ai-source">
+                <div class="metric-label">AI Source</div>
+                <div class="metric-value">{original_str}</div>
+            </div>
+            <div class="metric writer-rewrite">
+                <div class="metric-label">Writer Rewrite</div>
+                <div class="metric-value">{edited_str}</div>
+            </div>
+            <div class="metric delta">
+                <div class="metric-label">Delta</div>
+                <div class="metric-value">{delta_str}</div>
+            </div>
+        </div>
+        <div class="caption">{caption}</div>
+    </div>
+    """
+    return html
 
 
 page_icon = str(FAVICON_PATH) if FAVICON_PATH.exists() else "🧭"
