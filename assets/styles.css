@@ -32,6 +32,18 @@
   color: #475569;
 }
 
+.vt-metric-rows {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.vt-metric-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
 .vt-section-title {
   font-size: 1.1rem;
   font-weight: 700;

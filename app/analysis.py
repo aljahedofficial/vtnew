@@ -42,6 +42,7 @@ class AnalysisResult:
     classification: str
     metrics: Dict[str, float]
     components: Dict[str, float]
+    metric_standards: Dict[str, Dict[str, float]]
     word_delta: int
     sentence_delta: int
     ai_ism_total: int
@@ -1009,6 +1010,7 @@ def analyze_texts(original_text: str, edited_text: str) -> AnalysisResult:
     metrics = _format_metric_scores(result["metric_results"])
     components = _format_component_scores(result["component_scores"])
     classification = result["classification"]["label"]
+    metric_standards = _format_metric_standards(engine.standards)
 
     original_stats = result["original_stats"]
     edited_stats = result["edited_stats"]
@@ -1027,6 +1029,7 @@ def analyze_texts(original_text: str, edited_text: str) -> AnalysisResult:
         classification=classification,
         metrics=metrics,
         components=components,
+        metric_standards=metric_standards,
         word_delta=edited_stats["word_count"] - original_stats["word_count"],
         sentence_delta=edited_stats["sentence_count"] - original_stats["sentence_count"],
         ai_ism_total=sum(ai_ism_categories.values()) if ai_ism_categories else 0,
@@ -1064,6 +1067,27 @@ def _format_component_scores(components: Dict[str, float]) -> Dict[str, float]:
         "Structural": components.get("structural", 0.0),
         "Stylistic": components.get("stylistic", 0.0),
     }
+
+
+def _format_metric_standards(standards: CalibrationStandards) -> Dict[str, Dict[str, float]]:
+    mapping = {
+        "burstiness": "Burstiness",
+        "lexical_diversity": "Lexical Diversity",
+        "syntactic_complexity": "Syntactic Complexity",
+        "ai_ism_likelihood": "AI-ism Likelihood",
+        "function_word_ratio": "Function Word Ratio",
+        "discourse_marker_density": "Discourse Markers",
+        "information_density": "Information Density",
+        "epistemic_hedging": "Epistemic Hedging",
+    }
+    formatted: Dict[str, Dict[str, float]] = {}
+    for key, label in mapping.items():
+        values = standards.get(key)
+        formatted[label] = {
+            "human": round(values["human"], 4),
+            "ai": round(values["ai"], 4),
+        }
+    return formatted
 
 
 def _sentence_lengths(text: str) -> List[int]:

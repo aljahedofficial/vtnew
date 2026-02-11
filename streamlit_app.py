@@ -7,6 +7,16 @@ try:
 except ImportError:
 	LocalStorage = None
 
+try:
+	from docx import Document
+except ImportError:
+	Document = None
+
+try:
+	from pypdf import PdfReader
+except ImportError:
+	PdfReader = None
+
 from app.analysis import analyze_texts
 from app.charts import (
 	build_bar_chart,
@@ -48,6 +58,27 @@ def word_count_notice(label: str, count: int) -> None:
 		st.info(f"{label} is long ({count} words). Results may take longer to read.")
 
 
+def read_uploaded_text(uploaded_file: st.runtime.uploaded_file_manager.UploadedFile) -> str:
+	if uploaded_file is None:
+		return ""
+	name = (uploaded_file.name or "").lower()
+	data = uploaded_file.read()
+	if name.endswith(".txt"):
+		return data.decode("utf-8", errors="replace")
+	if name.endswith(".docx"):
+		if Document is None:
+			raise RuntimeError("python-docx is not installed.")
+		doc = Document(uploaded_file)
+		return "\n".join(p.text for p in doc.paragraphs if p.text)
+	if name.endswith(".pdf"):
+		if PdfReader is None:
+			raise RuntimeError("pypdf is not installed.")
+		reader = PdfReader(uploaded_file)
+		pages = [page.extract_text() or "" for page in reader.pages]
+		return "\n".join(pages).strip()
+	return data.decode("utf-8", errors="replace")
+
+
 page_icon = str(FAVICON_PATH) if FAVICON_PATH.exists() else "🧭"
 st.set_page_config(page_title="VoiceTracer", layout="wide", page_icon=page_icon)
 load_css()
@@ -73,6 +104,10 @@ if "edited_text" not in st.session_state:
 	st.session_state.edited_text = stored_edited or ""
 if "analysis" not in st.session_state:
 	st.session_state.analysis = None
+if "original_file_name" not in st.session_state:
+	st.session_state.original_file_name = None
+if "edited_file_name" not in st.session_state:
+	st.session_state.edited_file_name = None
 
 
 def save_original() -> None:
@@ -110,6 +145,10 @@ def run_analysis() -> None:
 
 if LocalStorage is None:
 	st.warning("Autosave is unavailable because streamlit-local-storage is missing.")
+if Document is None:
+	st.info("DOCX upload requires python-docx.")
+if PdfReader is None:
+	st.info("PDF upload requires pypdf.")
 
 st.markdown("<div class='vt-section-title'>Upload</div>", unsafe_allow_html=True)
 st.markdown(
@@ -120,6 +159,22 @@ st.markdown(
 left_col, right_col = st.columns(2, gap="large")
 
 with left_col:
+	upload_original = st.file_uploader(
+		"Upload Original File",
+		type=["pdf", "docx", "txt"],
+		key="original_file",
+	)
+	if upload_original and upload_original.name != st.session_state.original_file_name:
+		try:
+			st.session_state.original_text = read_uploaded_text(upload_original)
+			st.session_state.original_file_name = upload_original.name
+			save_original()
+			st.success(f"Loaded {upload_original.name}")
+		except RuntimeError as exc:
+			st.error(str(exc))
+			except Exception:
+			st.error("Could not read the file. Try a plain text export.")
+
 	st.text_area(
 		"Original Draft",
 		key="original_text",
@@ -133,6 +188,22 @@ with left_col:
 	st.button("Clear Original", on_click=clear_original, use_container_width=True)
 
 with right_col:
+	upload_edited = st.file_uploader(
+		"Upload AI-Edited File",
+		type=["pdf", "docx", "txt"],
+		key="edited_file",
+	)
+	if upload_edited and upload_edited.name != st.session_state.edited_file_name:
+		try:
+			st.session_state.edited_text = read_uploaded_text(upload_edited)
+			st.session_state.edited_file_name = upload_edited.name
+			save_edited()
+			st.success(f"Loaded {upload_edited.name}")
+		except RuntimeError as exc:
+			st.error(str(exc))
+		except Exception:
+			st.error("Could not read the file. Try a plain text export.")
+
 	st.text_area(
 		"AI-Edited Version",
 		key="edited_text",
@@ -228,14 +299,23 @@ metric_cols = st.columns(4, gap="medium")
 for idx, (title, caption) in enumerate(metric_items):
 	with metric_cols[idx % 4]:
 		metric_value = "--"
+		human_value = "--"
+		ai_value = "--"
 		if analysis:
 			metric_value = format_metric(analysis.metrics.get(title, "--"))
+			standards = analysis.metric_standards.get(title, {})
+			human_value = format_metric(standards.get("human", "--"))
+			ai_value = format_metric(standards.get("ai", "--"))
 		st.markdown(
 			f"""
 			<div class="vt-card vt-subtle">
 			  <div class="vt-card-title">{title}</div>
 			  <div class="vt-card-value">{metric_value}</div>
 			  <div class="vt-card-caption">{caption}</div>
+			  <div class="vt-metric-rows">
+			    <div class="vt-metric-row"><span>Human</span><span>{human_value}</span></div>
+			    <div class="vt-metric-row"><span>AI</span><span>{ai_value}</span></div>
+			  </div>
 			</div>
 			""",
 			unsafe_allow_html=True,
