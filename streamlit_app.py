@@ -18,8 +18,13 @@ from app.charts import (
 from app.state import EDITED_TEXT_KEY, ORIGINAL_TEXT_KEY
 
 
+ASSETS_DIR = Path(__file__).parent / "assets"
+LOGO_PATH = ASSETS_DIR / "logo.svg"
+FAVICON_PATH = ASSETS_DIR / "favicon.svg"
+
+
 def load_css() -> None:
-	css_path = Path(__file__).parent / "assets" / "styles.css"
+	css_path = ASSETS_DIR / "styles.css"
 	if css_path.exists():
 		st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
 
@@ -28,11 +33,34 @@ def word_count(text: str) -> int:
 	return len([w for w in text.split() if w.strip()])
 
 
-st.set_page_config(page_title="VoiceTracer", layout="wide")
+def format_metric(value: object) -> str:
+	if isinstance(value, (int, float)):
+		return f"{value:.2f}"
+	return str(value)
+
+
+def word_count_notice(label: str, count: int) -> None:
+	if count == 0:
+		return
+	if count < 200:
+		st.warning(f"{label} is short ({count} words). Aim for 200-500 words.")
+	elif count > 500:
+		st.info(f"{label} is long ({count} words). Results may take longer to read.")
+
+
+page_icon = str(FAVICON_PATH) if FAVICON_PATH.exists() else "🧭"
+st.set_page_config(page_title="VoiceTracer", layout="wide", page_icon=page_icon)
 load_css()
 
-st.title("VoiceTracer")
-st.caption("Preserve Your Voice. Navigate AI with Autonomy.")
+header_left, header_right = st.columns([1, 6], gap="small")
+with header_left:
+	if LOGO_PATH.exists():
+		st.image(str(LOGO_PATH), width=64)
+	else:
+		st.markdown("<div class='vt-logo-fallback'>VT</div>", unsafe_allow_html=True)
+with header_right:
+	st.title("VoiceTracer")
+	st.caption("Preserve Your Voice. Navigate AI with Autonomy.")
 
 local_storage = LocalStorage() if LocalStorage else None
 
@@ -99,7 +127,9 @@ with left_col:
 		placeholder="Paste your original text here...",
 		on_change=save_original,
 	)
-	st.caption(f"Word count: {word_count(st.session_state.original_text)}")
+	original_wc = word_count(st.session_state.original_text)
+	st.caption(f"Word count: {original_wc}")
+	word_count_notice("Original draft", original_wc)
 	st.button("Clear Original", on_click=clear_original, use_container_width=True)
 
 with right_col:
@@ -110,7 +140,9 @@ with right_col:
 		placeholder="Paste your AI-edited text here...",
 		on_change=save_edited,
 	)
-	st.caption(f"Word count: {word_count(st.session_state.edited_text)}")
+	edited_wc = word_count(st.session_state.edited_text)
+	st.caption(f"Word count: {edited_wc}")
+	word_count_notice("AI-edited text", edited_wc)
 	st.button("Clear AI-Edited", on_click=clear_edited, use_container_width=True)
 
 both_present = bool(st.session_state.original_text.strip()) and bool(
@@ -124,6 +156,7 @@ st.button(
 	"Analyze Voice Preservation",
 	disabled=not both_present,
 	on_click=run_analysis if both_present else None,
+	help="Runs the analysis on the two texts.",
 	use_container_width=True,
 )
 
@@ -139,7 +172,7 @@ with summary_col:
 		f"""
 		<div class="vt-card vt-subtle">
 		  <div class="vt-card-title">Voice Preservation Score</div>
-		  <div class="vt-card-value">{analysis.score if analysis else '--'}</div>
+		  <div class="vt-card-value">{format_metric(analysis.score) if analysis else '--'}</div>
 		  <div class="vt-card-caption">{analysis.classification if analysis else 'Awaiting analysis'}</div>
 		</div>
 		""",
@@ -196,7 +229,7 @@ for idx, (title, caption) in enumerate(metric_items):
 	with metric_cols[idx % 4]:
 		metric_value = "--"
 		if analysis:
-			metric_value = analysis.metrics.get(title, "--")
+			metric_value = format_metric(analysis.metrics.get(title, "--"))
 		st.markdown(
 			f"""
 			<div class="vt-card vt-subtle">
@@ -208,18 +241,43 @@ for idx, (title, caption) in enumerate(metric_items):
 			unsafe_allow_html=True,
 		)
 
+st.markdown("<div class='vt-section-title'>Metric Notes</div>", unsafe_allow_html=True)
+st.markdown(
+	"""
+<div class="vt-muted">
+<ul>
+  <li>Burstiness: variation in sentence length.</li>
+  <li>Lexical Diversity: vocabulary range and repetition.</li>
+  <li>Syntactic Complexity: presence of subordination.</li>
+  <li>AI-ism Likelihood: formulaic phrases often seen in AI edits.</li>
+  <li>Function Word Ratio: density of connector words.</li>
+  <li>Discourse Markers: signposting such as however, therefore.</li>
+  <li>Information Density: content word ratio.</li>
+  <li>Epistemic Hedging: cautious language (might, suggests).</li>
+</ul>
+</div>
+""",
+	unsafe_allow_html=True,
+)
+
 st.divider()
 
 st.markdown("<div class='vt-section-title'>Visualizations</div>", unsafe_allow_html=True)
+st.caption("Charts summarize how the AI edit shifts your voice across metrics.")
 
 if analysis:
 	chart_left, chart_right = st.columns(2, gap="large")
 	with chart_left:
+		st.caption("Gauge: overall voice preservation score.")
 		st.plotly_chart(build_gauge_chart(analysis.score), use_container_width=True)
+		st.caption("Radar: eight stylistic dimensions (0-100).")
 		st.plotly_chart(build_radar_chart(analysis.metrics), use_container_width=True)
 	with chart_right:
+		st.caption("Line: sentence length rhythm across the text.")
 		st.plotly_chart(build_line_chart(analysis.sentence_lengths), use_container_width=True)
+		st.caption("Bar: component scores used for the final score.")
 		st.plotly_chart(build_bar_chart(analysis.components), use_container_width=True)
+	st.caption("Pie: AI-ism category distribution.")
 	st.plotly_chart(build_pie_chart(analysis.ai_ism_categories), use_container_width=True)
 
 else:

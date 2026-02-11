@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="VoiceTracer logo">
+  <defs>
+    <linearGradient id="vt-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="58" fill="#f8fafc" stroke="#2563eb" stroke-width="4"/>
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+  <path d="M64 24 L74 64 L64 104 L54 64 Z" fill="url(#vt-gradient)"/>
+  <circle cx="64" cy="64" r="6" fill="#0f172a"/>
+</svg>

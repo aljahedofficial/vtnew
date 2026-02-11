@@ -36,11 +36,11 @@
 - [x] Clear buttons remove stored values
 
 ## Phase 5: Content + Quality
-- [ ] Add short help text for each metric
-- [ ] Add warning text for short inputs
-- [ ] Fast reload check
-- [ ] Basic accessibility pass (contrast, labels)
-- [ ] Manual QA for empty/short input handling
+- [x] Add short help text for each metric
+- [x] Add warning text for short inputs
+- [x] Fast reload check
+- [x] Basic accessibility pass (contrast, labels)
+- [x] Manual QA for empty/short input handling
 
 ## Phase 6: Deployment
-- [ ] Streamlit Community Cloud setup
+- [x] Streamlit Community Cloud setup
