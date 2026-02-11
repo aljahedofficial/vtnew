@@ -2286,51 +2286,7 @@ def render_repair_preview() -> None:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- Repair Suggestions (keep existing feature) ---
-    st.markdown(
-        "<div class='vt-section-title'>Repair Suggestions</div>", unsafe_allow_html=True
-    )
-    suggestions = _build_repair_suggestions(
-        metric_focus,
-        analysis,
-        st.session_state.ai_text,
-        st.session_state.paraphrase_text,
-    )
-    for suggestion in suggestions:
-        st.markdown(f"- {suggestion}")
-
-    # --- Annotation and disciplinary notes (expanded) ---
-    st.markdown(
-        "<div class='vt-section-title'>Annotation Panel</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        """
-        <div class="vt-card vt-subtle">
-          <div class="vt-card-title">Neutral explanation</div>
-          <div class="vt-card-caption">This view highlights how paraphrasing can preserve AI scaffolding (connectors, generic openers, assertive hedging removal). Adjust the negotiated rewrite to restore your intended stance.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        """
-        <div class="vt-card vt-subtle">
-          <div class="vt-card-title">Disciplinary note</div>
-          <div class="vt-card-caption">In humanities, hedging and interpretive framing are often expected. In hard sciences, tighter claims and clearer certainty markers may be preferred. Tune Option B / Custom accordingly.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.text_area(
-        "Your notes",
-        placeholder="Optional: record why you chose a negotiated version (useful for documentation export).",
-        height=110,
-        key="repair_notes",
-    )
-
-    # Remove in-page Navigation Actions + Final Text output; rely on the global "Next step" button.
+    # Remove Repair Suggestions + Annotation Panel per request.
     return
 
 
