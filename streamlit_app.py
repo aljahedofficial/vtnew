@@ -172,7 +172,7 @@ with left_col:
 			st.success(f"Loaded {upload_original.name}")
 		except RuntimeError as exc:
 			st.error(str(exc))
-			except Exception:
+		except Exception:
 			st.error("Could not read the file. Try a plain text export.")
 
 	st.text_area(
@@ -351,7 +351,10 @@ if analysis:
 		st.caption("Gauge: overall voice preservation score.")
 		st.plotly_chart(build_gauge_chart(analysis.score), use_container_width=True)
 		st.caption("Radar: eight stylistic dimensions (0-100).")
-		st.plotly_chart(build_radar_chart(analysis.metrics), use_container_width=True)
+		st.plotly_chart(
+			build_radar_chart(analysis.metrics, analysis.metric_standards),
+			use_container_width=True,
+		)
 	with chart_right:
 		st.caption("Line: sentence length rhythm across the text.")
 		st.plotly_chart(build_line_chart(analysis.sentence_lengths), use_container_width=True)

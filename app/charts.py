@@ -7,22 +7,81 @@ from typing import Dict, List
 import plotly.graph_objects as go
 
 
-def build_radar_chart(metrics: Dict[str, float]) -> go.Figure:
+def build_radar_chart(
+    metrics: Dict[str, float],
+    metric_standards: Dict[str, Dict[str, float]] | None = None,
+) -> go.Figure:
     labels = list(metrics.keys())
     values = list(metrics.values())
+
+    def format_standard(value: object) -> str:
+        if isinstance(value, (int, float)):
+            return f"{value:.2f}"
+        return "--"
+
+    customdata = []
+    for label in labels:
+        human_value = "--"
+        ai_value = "--"
+        if metric_standards and label in metric_standards:
+            standards = metric_standards.get(label, {})
+            human_value = format_standard(standards.get("human"))
+            ai_value = format_standard(standards.get("ai"))
+        customdata.append([human_value, ai_value])
 
     fig = go.Figure(
         data=[
             go.Scatterpolar(
                 r=values + values[:1],
                 theta=labels + labels[:1],
+                customdata=customdata + customdata[:1],
                 fill="toself",
                 line_color="#2563eb",
+                showlegend=False,
+                hovertemplate=(
+                    "<b>%{theta}</b><br>"
+                    "Score: %{r:.2f}<br>"
+                    "Human: %{customdata[0]} | AI: %{customdata[1]}"
+                    "<extra></extra>"
+                ),
             )
         ]
     )
+
+    if metric_standards and labels:
+        fig.add_trace(
+            go.Scatterpolar(
+                r=[0],
+                theta=[labels[0]],
+                mode="markers",
+                marker=dict(color="#16a34a", size=8),
+                name="Human standard",
+                hoverinfo="skip",
+                visible="legendonly",
+            )
+        )
+        fig.add_trace(
+            go.Scatterpolar(
+                r=[0],
+                theta=[labels[0]],
+                mode="markers",
+                marker=dict(color="#f97316", size=8),
+                name="AI standard",
+                hoverinfo="skip",
+                visible="legendonly",
+            )
+        )
+
     fig.update_layout(
-        showlegend=False,
+        showlegend=bool(metric_standards),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.06,
+            xanchor="right",
+            x=1,
+            font=dict(size=10),
+        ),
         margin=dict(l=20, r=20, t=30, b=20),
         polar=dict(radialaxis=dict(range=[0, 100], showticklabels=True)),
     )
