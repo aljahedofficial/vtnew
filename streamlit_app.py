@@ -33,6 +33,7 @@ from app.charts import (
 	build_bar_chart,
 	build_gauge_chart,
 	build_line_chart,
+	build_metric_standards_chart,
 	build_pie_chart,
 	build_radar_chart,
 )
@@ -286,7 +287,52 @@ def render_comparison_panel(
 	panel_height: int = 280,
 ) -> None:
 	original_markup, edited_markup = _build_diff_markup(original_text, edited_text)
+	frame_height = panel_height + 70
 	html_block = f"""
+	<style>
+	  .vt-compare-grid {{
+	    display: grid;
+	    grid-template-columns: repeat(2, minmax(0, 1fr));
+	    gap: 12px;
+	    font-family: inherit;
+	  }}
+	  .vt-compare-wrapper {{
+	    display: flex;
+	    flex-direction: column;
+	    gap: 6px;
+	  }}
+	  .vt-compare-label {{
+	    font-size: 0.8rem;
+	    color: #64748b;
+	    font-weight: 600;
+	  }}
+	  .vt-compare-panel {{
+	    border: 1px solid #e2e8f0;
+	    border-radius: 8px;
+	    background: #ffffff;
+	    padding: 12px;
+	    height: {panel_height}px;
+	    overflow: auto;
+	  }}
+	  .vt-compare-text {{
+	    white-space: pre-wrap;
+	    font-family: "Courier New", Courier, monospace;
+	    font-size: 0.85rem;
+	    line-height: 1.4;
+	    color: #0f172a;
+	  }}
+	  .vt-diff-add {{
+	    background: rgba(34, 197, 94, 0.2);
+	    border-radius: 4px;
+	    padding: 0 2px;
+	  }}
+	  .vt-diff-remove {{
+	    background: rgba(239, 68, 68, 0.2);
+	    border-radius: 4px;
+	    padding: 0 2px;
+	    text-decoration: line-through;
+	  }}
+	</style>
 	<div class=\"vt-compare-grid\" id=\"{panel_id}\">
 	  <div class=\"vt-compare-wrapper\">
 	    <div class=\"vt-compare-label\">Original</div>
@@ -319,7 +365,7 @@ def render_comparison_panel(
 	}})();
 	</script>
 	"""
-	components.html(html_block, height=panel_height, scrolling=False)
+	components.html(html_block, height=frame_height, scrolling=False)
 
 
 def _estimate_projected_score(
@@ -796,7 +842,7 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 	)
 
 	st.markdown(
-		"<div class='vt-footer'>Version 0.9 | Thesis Citation | Privacy</div>",
+		"<div class='vt-footer'>Version 0.9.1 | Thesis Citation | Privacy</div>",
 		unsafe_allow_html=True,
 	)
 
@@ -944,18 +990,34 @@ def render_dashboard_screen() -> None:
 			use_container_width=True,
 			config=_plotly_download_config(),
 		)
-		st.caption("Component scores used for the final score.")
+		st.caption("Human vs AI standard thresholds for each metric.")
 		st.plotly_chart(
-			build_bar_chart(analysis.components),
+			build_metric_standards_chart(analysis.metric_standards),
 			use_container_width=True,
 			config=_plotly_download_config(),
 		)
 		st.caption("AI-ism category distribution.")
-		st.plotly_chart(
-			build_pie_chart(analysis.ai_ism_categories),
-			use_container_width=True,
-			config=_plotly_download_config(),
-		)
+		pie_left, pie_right = st.columns(2)
+		with pie_left:
+			st.markdown("<div class='vt-muted'>Original (Human)</div>", unsafe_allow_html=True)
+			st.plotly_chart(
+				build_pie_chart(
+					analysis.ai_ism_categories_original,
+					colors=["#16a34a", "#22c55e", "#4ade80", "#86efac", "#bbf7d0"],
+				),
+				use_container_width=True,
+				config=_plotly_download_config(),
+			)
+		with pie_right:
+			st.markdown("<div class='vt-muted'>AI-Edited</div>", unsafe_allow_html=True)
+			st.plotly_chart(
+				build_pie_chart(
+					analysis.ai_ism_categories,
+					colors=["#ef4444", "#f97316", "#f59e0b", "#facc15", "#fb7185"],
+				),
+				use_container_width=True,
+				config=_plotly_download_config(),
+			)
 		with st.expander("AI-isms Detected"):
 			if analysis.ai_ism_phrases:
 				for phrase in analysis.ai_ism_phrases:

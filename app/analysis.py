@@ -50,6 +50,7 @@ class AnalysisResult:
     sentence_delta: int
     ai_ism_total: int
     ai_ism_categories: Dict[str, int]
+    ai_ism_categories_original: Dict[str, int]
     ai_ism_phrases: List[Dict]
     sentence_lengths: Dict[str, List[int]]
     original_word_count: int
@@ -1029,9 +1030,11 @@ def analyze_texts(
     original_stats = result["original_stats"]
     edited_stats = result["edited_stats"]
 
-    ai_ism_details = edited_metric_results["ai_ism_likelihood"].details
-    ai_ism_categories = ai_ism_details.get("category_breakdown", {})
-    ai_ism_phrases = ai_ism_details.get("detected_phrases", [])
+    edited_ai_ism_details = edited_metric_results["ai_ism_likelihood"].details
+    ai_ism_categories = edited_ai_ism_details.get("category_breakdown", {})
+    ai_ism_phrases = edited_ai_ism_details.get("detected_phrases", [])
+    original_ai_ism_details = original_metric_results["ai_ism_likelihood"].details
+    ai_ism_categories_original = original_ai_ism_details.get("category_breakdown", {})
 
     sentence_lengths = {
         "Original": _sentence_lengths(original_text),
@@ -1051,6 +1054,7 @@ def analyze_texts(
         sentence_delta=edited_stats["sentence_count"] - original_stats["sentence_count"],
         ai_ism_total=sum(ai_ism_categories.values()) if ai_ism_categories else 0,
         ai_ism_categories=ai_ism_categories,
+        ai_ism_categories_original=ai_ism_categories_original,
         ai_ism_phrases=ai_ism_phrases,
         sentence_lengths=sentence_lengths,
         original_word_count=original_stats["word_count"],

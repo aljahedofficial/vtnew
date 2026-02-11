@@ -155,7 +155,39 @@ def build_bar_chart(components: Dict[str, float]) -> go.Figure:
     return fig
 
 
-def build_pie_chart(categories: Dict[str, int]) -> go.Figure:
+def build_metric_standards_chart(metric_standards: Dict[str, Dict[str, float]]) -> go.Figure:
+    labels = list(metric_standards.keys())
+    human_values = [metric_standards[label].get("human", 0) for label in labels]
+    ai_values = [metric_standards[label].get("ai", 0) for label in labels]
+
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                x=human_values,
+                y=labels,
+                orientation="h",
+                name="Human Standard",
+                marker_color="#16a34a",
+            ),
+            go.Bar(
+                x=ai_values,
+                y=labels,
+                orientation="h",
+                name="AI Standard",
+                marker_color="#ef4444",
+            ),
+        ]
+    )
+    fig.update_layout(
+        barmode="group",
+        margin=dict(l=20, r=20, t=30, b=20),
+        xaxis=dict(range=[0, 100]),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig
+
+
+def build_pie_chart(categories: Dict[str, int], colors: List[str] | None = None) -> go.Figure:
     total = sum(categories.values())
     if total == 0:
         labels = ["None"]
@@ -163,15 +195,14 @@ def build_pie_chart(categories: Dict[str, int]) -> go.Figure:
     else:
         labels = list(categories.keys())
         values = list(categories.values())
-    fig = go.Figure(
-        data=[
-            go.Pie(
-                labels=labels,
-                values=values,
-                hole=0.45,
-            )
-        ]
+    pie = go.Pie(
+        labels=labels,
+        values=values,
+        hole=0.45,
     )
+    if colors:
+        pie.marker = dict(colors=colors)
+    fig = go.Figure(data=[pie])
     fig.update_layout(margin=dict(l=20, r=20, t=30, b=20))
     return fig
 
