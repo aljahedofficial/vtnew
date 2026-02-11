@@ -1551,7 +1551,7 @@ def render_dashboard_screen() -> None:
 			standards = analysis.metric_standards.get(label, {})
 			human_value = standards.get("human", 0.0)
 			ai_value = standards.get("ai", 0.0)
-				formula_text = METRIC_FORMULAS.get(label, "formula unavailable")
+			formula_text = METRIC_FORMULAS.get(label, "formula unavailable")
 			st.markdown(
 				f"""
 				<div class="vt-card vt-subtle">
