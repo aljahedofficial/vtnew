@@ -1,4 +1,5 @@
 from pathlib import Path
+import math
 
 import streamlit as st
 
@@ -301,17 +302,39 @@ for idx, (title, caption) in enumerate(metric_items):
 		metric_value = "--"
 		human_value = "--"
 		ai_value = "--"
+		detail_html = ""
 		if analysis:
 			metric_value = format_metric(analysis.metrics.get(title, "--"))
 			standards = analysis.metric_standards.get(title, {})
 			human_value = format_metric(standards.get("human", "--"))
 			ai_value = format_metric(standards.get("ai", "--"))
+			if title == "Burstiness":
+				lengths = analysis.sentence_lengths.get("Edited", [])
+				valid_lengths = [length for length in lengths if length > 0]
+				if valid_lengths:
+					mean_len = sum(valid_lengths) / len(valid_lengths)
+					variance = (
+						sum((length - mean_len) ** 2 for length in valid_lengths)
+						/ len(valid_lengths)
+					)
+					std_dev = math.sqrt(variance)
+					raw_value = std_dev / mean_len if mean_len > 0 else 0.0
+					detail_html = (
+						"<div class='vt-metric-detail'>"
+						f"Raw {raw_value:.2f} | Mean {mean_len:.1f} | Std {std_dev:.1f}"
+						"</div>"
+					)
+				else:
+					detail_html = (
+						"<div class='vt-metric-detail'>Raw -- | Mean -- | Std --</div>"
+					)
 		st.markdown(
 			f"""
 			<div class="vt-card vt-subtle">
 			  <div class="vt-card-title">{title}</div>
 			  <div class="vt-card-value">{metric_value}</div>
 			  <div class="vt-card-caption">{caption}</div>
+			  {detail_html}
 			  <div class="vt-metric-rows">
 			    <div class="vt-metric-row"><span>Human</span><span>{human_value}</span></div>
 			    <div class="vt-metric-row"><span>AI</span><span>{ai_value}</span></div>

@@ -36,8 +36,9 @@ def build_radar_chart(
                 theta=labels + labels[:1],
                 customdata=customdata + customdata[:1],
                 fill="toself",
-                line_color="#2563eb",
-                showlegend=False,
+                line_color="#f97316",
+                name="Edited score",
+                showlegend=True,
                 hovertemplate=(
                     "<b>%{theta}</b><br>"
                     "Score: %{r:.2f}<br>"
@@ -49,31 +50,31 @@ def build_radar_chart(
     )
 
     if metric_standards and labels:
+        human_values = [metric_standards.get(label, {}).get("human", 0) for label in labels]
+        ai_values = [metric_standards.get(label, {}).get("ai", 0) for label in labels]
         fig.add_trace(
             go.Scatterpolar(
-                r=[0],
-                theta=[labels[0]],
-                mode="markers",
-                marker=dict(color="#16a34a", size=8),
+                r=human_values + human_values[:1],
+                theta=labels + labels[:1],
+                mode="lines",
+                line=dict(color="#16a34a", width=2),
                 name="Human standard",
                 hoverinfo="skip",
-                visible="legendonly",
             )
         )
         fig.add_trace(
             go.Scatterpolar(
-                r=[0],
-                theta=[labels[0]],
-                mode="markers",
-                marker=dict(color="#f97316", size=8),
+                r=ai_values + ai_values[:1],
+                theta=labels + labels[:1],
+                mode="lines",
+                line=dict(color="#ef4444", width=2),
                 name="AI standard",
                 hoverinfo="skip",
-                visible="legendonly",
             )
         )
 
     fig.update_layout(
-        showlegend=bool(metric_standards),
+        showlegend=True,
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -91,12 +92,19 @@ def build_radar_chart(
 def build_line_chart(sentence_lengths: Dict[str, List[int]]) -> go.Figure:
     fig = go.Figure()
     for label, values in sentence_lengths.items():
+        color = "#2563eb"
+        if label.lower() == "original":
+            color = "#16a34a"
+        elif label.lower() == "edited":
+            color = "#f97316"
         fig.add_trace(
             go.Scatter(
                 x=list(range(1, len(values) + 1)),
                 y=values,
                 mode="lines+markers",
                 name=label,
+                line=dict(color=color),
+                marker=dict(color=color),
             )
         )
     fig.update_layout(

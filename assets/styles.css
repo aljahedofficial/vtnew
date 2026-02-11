@@ -44,6 +44,12 @@
   padding: 2px 0;
 }
 
+.vt-metric-detail {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
 .vt-section-title {
   font-size: 1.1rem;
   font-weight: 700;
