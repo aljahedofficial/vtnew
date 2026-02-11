@@ -646,7 +646,10 @@ def save_source(local_storage: LocalStorage | None) -> None:
 def clear_human(local_storage: LocalStorage | None) -> None:
 	st.session_state.human_text = ""
 	if local_storage:
-		local_storage.deleteItem(HUMAN_TEXT_KEY, key=_next_storage_key("delete_human"))
+		try:
+			local_storage.deleteItem(HUMAN_TEXT_KEY, key=_next_storage_key("delete_human"))
+		except KeyError:
+			pass
 	st.session_state.analysis = None
 
 
@@ -655,21 +658,33 @@ def clear_source(local_storage: LocalStorage | None) -> None:
 	st.session_state.source_text = ""
 	st.session_state.source_file_name = None
 	if local_storage:
-		local_storage.deleteItem(SOURCE_TEXT_KEY, key=_next_storage_key("delete_source"))
+		try:
+			local_storage.deleteItem(SOURCE_TEXT_KEY, key=_next_storage_key("delete_source"))
+		except KeyError:
+			pass
 	st.session_state.analysis = None
 
 
 def clear_ai(local_storage: LocalStorage | None) -> None:
 	st.session_state.ai_text = ""
 	if local_storage:
-		local_storage.deleteItem(AI_TEXT_KEY, key=_next_storage_key("delete_ai"))
+		try:
+			local_storage.deleteItem(AI_TEXT_KEY, key=_next_storage_key("delete_ai"))
+		except KeyError:
+			pass
 	st.session_state.analysis = None
 
 
 def clear_paraphrase(local_storage: LocalStorage | None) -> None:
 	st.session_state.paraphrase_text = ""
 	if local_storage:
-		local_storage.deleteItem(PARAPHRASE_TEXT_KEY, key=_next_storage_key("delete_paraphrase"))
+		try:
+			local_storage.deleteItem(
+				PARAPHRASE_TEXT_KEY,
+				key=_next_storage_key("delete_paraphrase"),
+			)
+		except KeyError:
+			pass
 	st.session_state.analysis = None
 
 
