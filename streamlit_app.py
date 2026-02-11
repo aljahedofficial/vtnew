@@ -4,6 +4,7 @@ from collections import Counter
 from pathlib import Path
 import difflib
 import html
+import json
 import math
 import re
 from typing import Dict, List, Tuple
@@ -35,7 +36,7 @@ from app.charts import (
 	build_pie_chart,
 	build_radar_chart,
 )
-from app.state import EDITED_TEXT_KEY, ORIGINAL_TEXT_KEY
+from app.state import CALIBRATION_KEY, EDITED_TEXT_KEY, ORIGINAL_TEXT_KEY
 
 
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -465,6 +466,8 @@ def init_state() -> None:
 			key: {"human": value["human"], "ai": value["ai"]}
 			for key, value in default_standards.items()
 		}
+	if "calibration_loaded" not in st.session_state:
+		st.session_state.calibration_loaded = False
 	if "analysis" not in st.session_state:
 		st.session_state.analysis = None
 	if "original_text" not in st.session_state:
@@ -479,6 +482,10 @@ def init_state() -> None:
 		st.session_state.repair_metric = METRICS[0]["label"]
 	if "page" not in st.session_state:
 		st.session_state.page = "Upload & Configuration"
+	if "calibration_toggle_prev" not in st.session_state:
+		st.session_state.calibration_toggle_prev = "Use default standards"
+	if "defaults_reset_notice" not in st.session_state:
+		st.session_state.defaults_reset_notice = False
 
 
 def save_original(local_storage: LocalStorage | None) -> None:
@@ -505,6 +512,48 @@ def clear_edited(local_storage: LocalStorage | None) -> None:
 	if local_storage:
 		local_storage.deleteItem(EDITED_TEXT_KEY)
 	st.session_state.analysis = None
+
+
+def _coerce_calibration(data: object) -> Dict[str, Dict[str, float]] | None:
+	if not isinstance(data, dict):
+		return None
+	coerced: Dict[str, Dict[str, float]] = {}
+	for key, defaults in CalibrationStandards.DEFAULTS.items():
+		entry = data.get(key)
+		if not isinstance(entry, dict):
+			return None
+		human = entry.get("human")
+		ai = entry.get("ai")
+		if not isinstance(human, (int, float)) or not isinstance(ai, (int, float)):
+			return None
+		coerced[key] = {"human": float(human), "ai": float(ai)}
+	return coerced
+
+
+def load_calibration(local_storage: LocalStorage | None) -> None:
+	if not local_storage or st.session_state.calibration_loaded:
+		return
+	stored = local_storage.getItem(CALIBRATION_KEY)
+	if not stored:
+		st.session_state.calibration_loaded = True
+		return
+	try:
+		data = json.loads(stored)
+	except (TypeError, json.JSONDecodeError):
+		st.session_state.calibration_loaded = True
+		return
+	sanitized = _coerce_calibration(data)
+	if sanitized:
+		st.session_state.calibration = sanitized
+		st.session_state.use_default_standards = False
+		st.session_state.calibration_toggle = "Adjust thresholds"
+	st.session_state.calibration_loaded = True
+
+
+def save_calibration(local_storage: LocalStorage | None) -> None:
+	if not local_storage:
+		return
+	local_storage.setItem(CALIBRATION_KEY, json.dumps(st.session_state.calibration))
 
 
 def run_analysis() -> None:
@@ -585,6 +634,64 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		st.session_state.use_default_standards = (
 			st.session_state.calibration_toggle == "Use default standards"
 		)
+		if (
+			st.session_state.calibration_toggle_prev != st.session_state.calibration_toggle
+			and st.session_state.use_default_standards
+		):
+			st.session_state.defaults_reset_notice = True
+		st.session_state.calibration_toggle_prev = st.session_state.calibration_toggle
+		if st.session_state.use_default_standards:
+			for key, defaults in CalibrationStandards.DEFAULTS.items():
+				st.session_state.calibration[key] = {
+					"human": defaults["human"],
+					"ai": defaults["ai"],
+				}
+				st.session_state[f"inline_human_{key}"] = defaults["human"]
+				st.session_state[f"inline_ai_{key}"] = defaults["ai"]
+			if local_storage:
+				local_storage.deleteItem(CALIBRATION_KEY)
+			if st.session_state.defaults_reset_notice:
+				st.success("Default thresholds restored. The next analysis uses standard settings.")
+				st.session_state.defaults_reset_notice = False
+		if not st.session_state.use_default_standards:
+			st.info("Adjusting thresholds affects the next analysis run.")
+			st.caption("Custom thresholds active.")
+			for metric in METRICS:
+				key = metric["key"]
+				label = metric["label"]
+				defaults = CalibrationStandards.DEFAULTS[key]
+				current = st.session_state.calibration.get(key, defaults)
+				with st.expander(f"{label} thresholds", expanded=False):
+					human_value = st.slider(
+						"Human Standard",
+						min_value=0.0,
+						max_value=100.0,
+						value=float(current["human"]),
+						step=0.01,
+						key=f"inline_human_{key}",
+					)
+					ai_value = st.slider(
+						"AI Standard",
+						min_value=0.0,
+						max_value=100.0,
+						value=float(current["ai"]),
+						step=0.01,
+						key=f"inline_ai_{key}",
+					)
+					st.session_state.calibration[key] = {
+						"human": human_value,
+						"ai": ai_value,
+					}
+			if local_storage:
+				save_calibration(local_storage)
+			both_present = bool(st.session_state.original_text.strip()) and bool(
+				st.session_state.edited_text.strip()
+			)
+			st.button(
+				"Apply thresholds & rerun analysis",
+				disabled=not both_present,
+				on_click=run_analysis if both_present else None,
+			)
 	with config_right:
 		st.markdown(
 			"""
@@ -914,8 +1021,11 @@ def render_repair_preview() -> None:
 	)
 
 
-def render_calibration() -> None:
+def render_calibration(local_storage: LocalStorage | None) -> None:
 	st.markdown("<div class='vt-section-title'>Calibration Panel</div>", unsafe_allow_html=True)
+	if st.session_state.use_default_standards:
+		st.info("Enable 'Adjust thresholds' to edit calibration values.")
+	disabled = st.session_state.use_default_standards
 	for metric in METRICS:
 		key = metric["key"]
 		label = metric["label"]
@@ -928,7 +1038,8 @@ def render_calibration() -> None:
 				max_value=100.0,
 				value=float(current["human"]),
 				step=0.01,
-				key=f"human_{key}",
+				key=f"inline_human_{key}",
+				disabled=disabled,
 			)
 			ai_value = st.slider(
 				"AI Standard",
@@ -936,13 +1047,15 @@ def render_calibration() -> None:
 				max_value=100.0,
 				value=float(current["ai"]),
 				step=0.01,
-				key=f"ai_{key}",
+				key=f"inline_ai_{key}",
+				disabled=disabled,
 			)
 			st.selectbox(
 				"Sensitivity",
 				options=["Strict", "Moderate", "Permissive"],
 				index=1,
 				key=f"sensitivity_{key}",
+				disabled=disabled,
 			)
 			st.session_state.calibration[key] = {"human": human_value, "ai": ai_value}
 			if st.button(f"Reset {label}", key=f"reset_{key}"):
@@ -950,6 +1063,10 @@ def render_calibration() -> None:
 					"human": defaults["human"],
 					"ai": defaults["ai"],
 				}
+				st.session_state[f"inline_human_{key}"] = defaults["human"]
+				st.session_state[f"inline_ai_{key}"] = defaults["ai"]
+				if local_storage:
+					save_calibration(local_storage)
 				st.rerun()
 	st.markdown("<div class='vt-section-title'>Impact Preview</div>", unsafe_allow_html=True)
 	st.markdown(
@@ -958,7 +1075,17 @@ def render_calibration() -> None:
 	)
 	st.button("Save as Custom Profile")
 	st.button("Export Calibration Settings")
-	st.button("Reset All")
+	if st.button("Reset All"):
+		for key, defaults in CalibrationStandards.DEFAULTS.items():
+			st.session_state.calibration[key] = {
+				"human": defaults["human"],
+				"ai": defaults["ai"],
+			}
+			st.session_state[f"inline_human_{key}"] = defaults["human"]
+			st.session_state[f"inline_ai_{key}"] = defaults["ai"]
+		if local_storage:
+			save_calibration(local_storage)
+		st.rerun()
 
 
 def render_documentation_export() -> None:
@@ -1005,6 +1132,7 @@ load_css()
 apply_theme(st.session_state.theme_name)
 
 local_storage = LocalStorage() if LocalStorage else None
+load_calibration(local_storage)
 stored_original = local_storage.getItem(ORIGINAL_TEXT_KEY) if local_storage else ""
 stored_edited = local_storage.getItem(EDITED_TEXT_KEY) if local_storage else ""
 if not st.session_state.original_text:
@@ -1049,6 +1177,15 @@ if Document is None:
 if PdfReader is None:
 	st.info("PDF upload requires pypdf.")
 
+nav_pages = [
+	"Upload & Configuration",
+	"Analysis Dashboard",
+	"Repair Preview",
+	"Calibration",
+	"Documentation Export",
+	"Settings",
+]
+
 if st.session_state.page == "Upload & Configuration":
 	render_upload_screen(local_storage)
 elif st.session_state.page == "Analysis Dashboard":
@@ -1056,7 +1193,14 @@ elif st.session_state.page == "Analysis Dashboard":
 elif st.session_state.page == "Repair Preview":
 	render_repair_preview()
 elif st.session_state.page == "Calibration":
-	render_calibration()
+	render_calibration(local_storage)
+
+if st.button("Next step", use_container_width=True, key="next_step_global"):
+	current_index = nav_pages.index(st.session_state.page)
+	next_index = min(current_index + 1, len(nav_pages) - 1)
+	if next_index != current_index:
+		st.session_state.page = nav_pages[next_index]
+		st.rerun()
 elif st.session_state.page == "Documentation Export":
 	render_documentation_export()
 elif st.session_state.page == "Settings":
