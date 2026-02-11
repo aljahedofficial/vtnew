@@ -233,9 +233,16 @@ PRESET_SETS = [
 			"Accordingly, well-designed feedback mechanisms improve outcomes and sustain progress."
 		),
 		"paraphrase": (
-			"Learning improves when people receive quick, specific feedback that connects to what they just did. "
-			"The source emphasizes that targeted responses help learners correct course and stay engaged. "
-			"This makes feedback loops a practical tool for steady improvement."
+			"In this essay, it is important to note that feedback plays a crucial role in learning, and the present study "
+			"aims to delve into how timely responses provide insights into improvement. Moreover, in the context of training, "
+			"this paper examines a wide range of methods and a variety of practices; therefore, in terms of outcomes, it is "
+			"evident that targeted feedback sheds light on progress. Furthermore, it should be noted that a number of short "
+			"responses, in addition to structured guidance, highlight the significance of clear actions. On the other hand, "
+			"in contrast and by contrast, delayed responses raise important questions; nevertheless, and nonetheless, learners "
+			"adjust accordingly. Consequently, as a result, and thus, the purpose of this discussion is to summarize how these "
+			"loops offer insights into practice. Similarly and likewise, in comparison, the present study suggests that "
+			"feedback mechanisms play an important role; alternatively and conversely, unclear cues can undermine goals. "
+			"Subsequently, hence, and regardless, to conclude, it is worth noting that consistent feedback improves outcomes."
 		),
 	},
 	{
