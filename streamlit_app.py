@@ -649,7 +649,10 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 				st.session_state[f"inline_human_{key}"] = defaults["human"]
 				st.session_state[f"inline_ai_{key}"] = defaults["ai"]
 			if local_storage:
-				local_storage.deleteItem(CALIBRATION_KEY)
+				try:
+					local_storage.deleteItem(CALIBRATION_KEY)
+				except KeyError:
+					pass
 			if st.session_state.defaults_reset_notice:
 				st.success("Default thresholds restored. The next analysis uses standard settings.")
 				st.session_state.defaults_reset_notice = False
