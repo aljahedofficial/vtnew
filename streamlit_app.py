@@ -379,7 +379,7 @@ if analysis:
 			use_container_width=True,
 		)
 	with chart_right:
-		st.caption("Line: sentence length rhythm across the text.")
+		st.caption("Line: sentence length rhythm across the text (green: original, red: AI-edited).")
 		st.plotly_chart(build_line_chart(analysis.sentence_lengths), use_container_width=True)
 		st.caption("Bar: component scores used for the final score.")
 		st.plotly_chart(build_bar_chart(analysis.components), use_container_width=True)

@@ -96,7 +96,7 @@ def build_line_chart(sentence_lengths: Dict[str, List[int]]) -> go.Figure:
         if label.lower() == "original":
             color = "#16a34a"
         elif label.lower() == "edited":
-            color = "#f97316"
+            color = "#ef4444"
         fig.add_trace(
             go.Scatter(
                 x=list(range(1, len(values) + 1)),
