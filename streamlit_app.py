@@ -807,9 +807,14 @@ def render_dashboard_screen() -> None:
 		st.info("Run analysis to view the dashboard.")
 		return
 
-	left_col, center_col, right_col = st.columns([1, 1.4, 1], gap="large")
+	st.markdown("<div class='vt-section-title'>Analysis View</div>", unsafe_allow_html=True)
+	section = st.radio(
+		"",
+		options=["Executive Summary", "Metric Deep-Dive", "Visual Evidence"],
+		horizontal=True,
+	)
 
-	with left_col:
+	if section == "Executive Summary":
 		st.markdown("<div class='vt-section-title'>Executive Summary</div>", unsafe_allow_html=True)
 		st.markdown(
 			f"""
@@ -859,7 +864,7 @@ def render_dashboard_screen() -> None:
 			st.session_state.page = "Repair Preview"
 			st.rerun()
 
-	with center_col:
+	elif section == "Metric Deep-Dive":
 		st.markdown("<div class='vt-section-title'>Metric Deep-Dive</div>", unsafe_allow_html=True)
 		st.plotly_chart(
 			build_radar_chart(
@@ -931,7 +936,7 @@ def render_dashboard_screen() -> None:
 					unsafe_allow_html=True,
 				)
 
-	with right_col:
+	else:
 		st.markdown("<div class='vt-section-title'>Visual Evidence</div>", unsafe_allow_html=True)
 		st.caption("Sentence rhythm across the text (green: original, red: AI-edited).")
 		st.plotly_chart(
