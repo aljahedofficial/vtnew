@@ -32,12 +32,16 @@ from app.analysis import CalibrationStandards, analyze_multitext
 from app.charts import (
 	build_bar_chart,
 	build_gauge_chart,
-	build_mini_gauge,
 	build_line_chart,
 	build_metric_standards_chart,
 	build_pie_chart,
 	build_radar_chart,
 )
+try:
+	from app.charts import build_mini_gauge
+except ImportError:
+	def build_mini_gauge(score: float, bar_color: str) -> go.Figure:
+		return build_gauge_chart(score)
 from app.state import (
 	AI_TEXT_KEY,
 	CALIBRATION_KEY,
