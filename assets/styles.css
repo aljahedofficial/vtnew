@@ -1,0 +1,53 @@
+/* Minimal UI polish for VoiceTracer */
+
+:root {
+  --vt-accent: #2563eb;
+  --vt-surface: #ffffff;
+  --vt-border: #e2e8f0;
+}
+
+.vt-card {
+  background: var(--vt-surface);
+  border: 1px solid var(--vt-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.vt-card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.vt-card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.vt-card-caption {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.vt-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 8px 0 12px 0;
+  color: #0f172a;
+}
+
+.vt-muted {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.vt-subtle {
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.vt-subtle:hover {
+  border-color: var(--vt-accent);
+}
