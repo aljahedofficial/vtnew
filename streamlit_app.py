@@ -997,12 +997,13 @@ def render_dashboard_screen() -> None:
 			config=_plotly_download_config(),
 		)
 		st.caption("AI-ism category distribution.")
+		original_ai_ism = getattr(analysis, "ai_ism_categories_original", analysis.ai_ism_categories)
 		pie_left, pie_right = st.columns(2)
 		with pie_left:
 			st.markdown("<div class='vt-muted'>Original (Human)</div>", unsafe_allow_html=True)
 			st.plotly_chart(
 				build_pie_chart(
-					analysis.ai_ism_categories_original,
+					original_ai_ism,
 					colors=["#16a34a", "#22c55e", "#4ade80", "#86efac", "#bbf7d0"],
 				),
 				use_container_width=True,
