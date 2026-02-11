@@ -28,7 +28,7 @@ try:
 except ImportError:
 	PdfReader = None
 
-from app.analysis import CalibrationStandards, analyze_texts
+from app.analysis import CalibrationStandards, analyze_multitext
 from app.charts import (
 	build_bar_chart,
 	build_gauge_chart,
@@ -37,7 +37,13 @@ from app.charts import (
 	build_pie_chart,
 	build_radar_chart,
 )
-from app.state import CALIBRATION_KEY, EDITED_TEXT_KEY, ORIGINAL_TEXT_KEY
+from app.state import (
+	AI_TEXT_KEY,
+	CALIBRATION_KEY,
+	HUMAN_TEXT_KEY,
+	PARAPHRASE_TEXT_KEY,
+	PROMPT_TEXT_KEY,
+)
 
 
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -335,13 +341,13 @@ def render_comparison_panel(
 	</style>
 	<div class=\"vt-compare-grid\" id=\"{panel_id}\">
 	  <div class=\"vt-compare-wrapper\">
-	    <div class=\"vt-compare-label\">Original</div>
+	    <div class=\"vt-compare-label\">AI Source</div>
 	    <div class=\"vt-compare-panel\" id=\"{panel_id}-left\">
 	      <div class=\"vt-compare-text\">{original_markup}</div>
 	    </div>
 	  </div>
 	  <div class=\"vt-compare-wrapper\">
-	    <div class=\"vt-compare-label\">AI-Edited</div>
+	    <div class=\"vt-compare-label\">Writer Rewrite</div>
 	    <div class=\"vt-compare-panel\" id=\"{panel_id}-right\">
 	      <div class=\"vt-compare-text\">{edited_markup}</div>
 	    </div>
@@ -442,7 +448,7 @@ def _build_repair_suggestions(
 		else:
 			suggestions.append("Reduce template phrases and tighten transitions between ideas.")
 	elif metric_label == "Burstiness":
-		lengths = analysis.sentence_lengths.get("Edited", [])
+		lengths = analysis.sentence_lengths.get("Writer Rewrite", [])
 		if lengths:
 			shortest = min(lengths)
 			longest = max(lengths)
@@ -516,7 +522,7 @@ def init_state() -> None:
 	if "theme_name" not in st.session_state:
 		st.session_state.theme_name = "Neutral Corporate"
 	if "prompt_text" not in st.session_state:
-		st.session_state.prompt_text = "Fix grammar and fluency"
+		st.session_state.prompt_text = ""
 	if "use_default_standards" not in st.session_state:
 		st.session_state.use_default_standards = True
 	if "calibration" not in st.session_state:
@@ -528,14 +534,22 @@ def init_state() -> None:
 		st.session_state.calibration_loaded = False
 	if "analysis" not in st.session_state:
 		st.session_state.analysis = None
-	if "original_text" not in st.session_state:
-		st.session_state.original_text = ""
-	if "edited_text" not in st.session_state:
-		st.session_state.edited_text = ""
-	if "original_file_name" not in st.session_state:
-		st.session_state.original_file_name = None
-	if "edited_file_name" not in st.session_state:
-		st.session_state.edited_file_name = None
+	if "human_text" not in st.session_state:
+		st.session_state.human_text = ""
+	if "source_text" not in st.session_state:
+		st.session_state.source_text = ""
+	if "ai_text" not in st.session_state:
+		st.session_state.ai_text = ""
+	if "paraphrase_text" not in st.session_state:
+		st.session_state.paraphrase_text = ""
+	if "human_file_name" not in st.session_state:
+		st.session_state.human_file_name = None
+	if "source_file_name" not in st.session_state:
+		st.session_state.source_file_name = None
+	if "ai_file_name" not in st.session_state:
+		st.session_state.ai_file_name = None
+	if "paraphrase_file_name" not in st.session_state:
+		st.session_state.paraphrase_file_name = None
 	if "repair_metric" not in st.session_state:
 		st.session_state.repair_metric = METRICS[0]["label"]
 	if "page" not in st.session_state:
@@ -546,29 +560,54 @@ def init_state() -> None:
 		st.session_state.defaults_reset_notice = False
 
 
-def save_original(local_storage: LocalStorage | None) -> None:
+def save_human(local_storage: LocalStorage | None) -> None:
 	if local_storage:
-		local_storage.setItem(ORIGINAL_TEXT_KEY, st.session_state.original_text)
+		local_storage.setItem(HUMAN_TEXT_KEY, st.session_state.human_text)
 	st.session_state.analysis = None
 
 
-def save_edited(local_storage: LocalStorage | None) -> None:
+def save_ai(local_storage: LocalStorage | None) -> None:
 	if local_storage:
-		local_storage.setItem(EDITED_TEXT_KEY, st.session_state.edited_text)
+		local_storage.setItem(AI_TEXT_KEY, st.session_state.ai_text)
 	st.session_state.analysis = None
 
 
-def clear_original(local_storage: LocalStorage | None) -> None:
-	st.session_state.original_text = ""
+def save_paraphrase(local_storage: LocalStorage | None) -> None:
 	if local_storage:
-		local_storage.deleteItem(ORIGINAL_TEXT_KEY)
+		local_storage.setItem(PARAPHRASE_TEXT_KEY, st.session_state.paraphrase_text)
 	st.session_state.analysis = None
 
 
-def clear_edited(local_storage: LocalStorage | None) -> None:
-	st.session_state.edited_text = ""
+def save_prompt(local_storage: LocalStorage | None) -> None:
 	if local_storage:
-		local_storage.deleteItem(EDITED_TEXT_KEY)
+		local_storage.setItem(PROMPT_TEXT_KEY, st.session_state.prompt_text)
+	st.session_state.analysis = None
+
+
+def clear_human(local_storage: LocalStorage | None) -> None:
+	st.session_state.human_text = ""
+	if local_storage:
+		local_storage.deleteItem(HUMAN_TEXT_KEY)
+	st.session_state.analysis = None
+
+
+def clear_source() -> None:
+	st.session_state.source_text = ""
+	st.session_state.source_file_name = None
+	st.session_state.analysis = None
+
+
+def clear_ai(local_storage: LocalStorage | None) -> None:
+	st.session_state.ai_text = ""
+	if local_storage:
+		local_storage.deleteItem(AI_TEXT_KEY)
+	st.session_state.analysis = None
+
+
+def clear_paraphrase(local_storage: LocalStorage | None) -> None:
+	st.session_state.paraphrase_text = ""
+	if local_storage:
+		local_storage.deleteItem(PARAPHRASE_TEXT_KEY)
 	st.session_state.analysis = None
 
 
@@ -618,15 +657,23 @@ def run_analysis() -> None:
 	custom_standards = None
 	if not st.session_state.use_default_standards:
 		custom_standards = st.session_state.calibration
-	original_text = st.session_state.original_text
-	edited_text = st.session_state.edited_text
-	if not isinstance(original_text, str):
-		original_text = str(original_text or "")
-	if not isinstance(edited_text, str):
-		edited_text = str(edited_text or "")
-	st.session_state.analysis = analyze_texts(
-		original_text,
-		edited_text,
+	human_text = st.session_state.human_text
+	source_text = st.session_state.source_text
+	ai_text = st.session_state.ai_text
+	paraphrase_text = st.session_state.paraphrase_text
+	if not isinstance(human_text, str):
+		human_text = str(human_text or "")
+	if not isinstance(source_text, str):
+		source_text = str(source_text or "")
+	if not isinstance(ai_text, str):
+		ai_text = str(ai_text or "")
+	if not isinstance(paraphrase_text, str):
+		paraphrase_text = str(paraphrase_text or "")
+	st.session_state.analysis = analyze_multitext(
+		human_text,
+		source_text,
+		ai_text,
+		paraphrase_text,
 		custom_standards=custom_standards,
 	)
 
@@ -657,14 +704,15 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		"""
 		<div class="vt-hero">
 		  <div class="vt-compass">&#x1F9ED;</div>
-		  <div class="vt-hero-title">Compare Your Original and AI-Edited Text</div>
-		  <div class="vt-hero-sub">Measure voice preservation across 8 stylistic dimensions.</div>
+		  <div class="vt-hero-title">Trace Voice Across AI and Human Rewrites</div>
+		  <div class="vt-hero-sub">Analyze AI mimicry, source similarity, and voice preservation in one dashboard.</div>
 		</div>
 		""",
 		unsafe_allow_html=True,
 	)
 
 	st.markdown("<div class='vt-section-title'>Configuration</div>", unsafe_allow_html=True)
+	prompt_status = "Provided" if st.session_state.prompt_text.strip() else "Missing"
 	config_left, config_right = st.columns([2, 1], gap="large")
 	with config_left:
 		st.selectbox(
@@ -674,14 +722,6 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 			help="Genre is locked for this release.",
 			disabled=True,
 		)
-		prompt = st.text_input(
-			"Prompt Declaration",
-			value=st.session_state.prompt_text,
-			help="Default: Fix grammar and fluency",
-		)
-		st.session_state.prompt_text = prompt
-		if prompt.strip() != "Fix grammar and fluency":
-			st.warning("Prompt changed. This may alter the AI editing profile.")
 		st.radio(
 			"Calibration",
 			options=["Use default standards", "Adjust thresholds"],
@@ -745,8 +785,12 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 					}
 			if local_storage:
 				save_calibration(local_storage)
-			both_present = bool(st.session_state.original_text.strip()) and bool(
-				st.session_state.edited_text.strip()
+			both_present = (
+				bool(st.session_state.human_text.strip())
+				and bool(st.session_state.source_text.strip())
+				and bool(st.session_state.ai_text.strip())
+				and bool(st.session_state.paraphrase_text.strip())
+				and bool(st.session_state.prompt_text.strip())
 			)
 			st.button(
 				"Apply thresholds & rerun analysis",
@@ -755,94 +799,167 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 			)
 	with config_right:
 		st.markdown(
-			"""
+			f"""
 			<div class="vt-card vt-subtle">
 			  <div class="vt-card-title">Step Summary</div>
-			  <div class="vt-card-caption">Upload both drafts to unlock analysis.</div>
+			  <div class="vt-card-caption">Provide all four sections to unlock analysis.</div>
 			  <div class="vt-metric-rows">
 			    <div class="vt-metric-row"><span>Genre</span><span>Academic Writing</span></div>
-			    <div class="vt-metric-row"><span>Prompt</span><span>Fix grammar and fluency</span></div>
+			    <div class="vt-metric-row"><span>Prompt</span><span>{prompt_status}</span></div>
 			  </div>
 			</div>
 			""",
 			unsafe_allow_html=True,
 		)
 
-	st.markdown("<div class='vt-section-title'>Text Upload</div>", unsafe_allow_html=True)
-	left_col, right_col = st.columns(2, gap="large")
+	st.markdown("<div class='vt-section-title'>Text Inputs</div>", unsafe_allow_html=True)
+	section_top_left, section_top_right = st.columns(2, gap="large")
 
-	with left_col:
-		upload_original = st.file_uploader(
-			"Original Draft",
+	with section_top_left:
+		st.markdown("<div class='vt-card-title'>Section 1: Human Baseline (Unassisted)</div>", unsafe_allow_html=True)
+		upload_human = st.file_uploader(
+			"Upload unedited human text",
 			type=["pdf", "docx", "txt"],
-			key="original_file",
+			key="human_file",
 		)
-		if upload_original and upload_original.name != st.session_state.original_file_name:
+		if upload_human and upload_human.name != st.session_state.human_file_name:
 			try:
-				st.session_state.original_text = read_uploaded_text(upload_original)
-				st.session_state.original_file_name = upload_original.name
-				save_original(local_storage)
-				st.success(f"Loaded {upload_original.name}")
+				st.session_state.human_text = read_uploaded_text(upload_human)
+				st.session_state.human_file_name = upload_human.name
+				save_human(local_storage)
+				st.success(f"Loaded {upload_human.name}")
 			except RuntimeError as exc:
 				st.error(str(exc))
 			except Exception:
 				st.error("Could not read the file. Try a plain text export.")
 
 		st.text_area(
-			"Paste Original Draft",
-			key="original_text",
-			height=240,
-			placeholder="Paste your original text here...",
-			on_change=lambda: save_original(local_storage),
+			"Paste or write your unassisted text",
+			key="human_text",
+			height=220,
+			placeholder="Write or paste your raw human text here...",
+			on_change=lambda: save_human(local_storage),
 		)
-		original_wc = word_count(st.session_state.original_text)
-		st.caption(f"Word count: {original_wc}")
-		word_count_notice("Original draft", original_wc)
-		st.button("Clear Original", on_click=lambda: clear_original(local_storage), use_container_width=True)
+		human_wc = word_count(st.session_state.human_text)
+		st.caption(f"Word count: {human_wc}")
+		word_count_notice("Human baseline", human_wc)
+		st.button("Clear Section 1", on_click=lambda: clear_human(local_storage), use_container_width=True)
 
-	with right_col:
-		upload_edited = st.file_uploader(
-			"AI-Edited Version",
+	with section_top_right:
+		st.markdown("<div class='vt-card-title'>Section 2: Source Material (Upload Only)</div>", unsafe_allow_html=True)
+		upload_source = st.file_uploader(
+			"Upload source material",
 			type=["pdf", "docx", "txt"],
-			key="edited_file",
+			key="source_file",
 		)
-		if upload_edited and upload_edited.name != st.session_state.edited_file_name:
+		if upload_source and upload_source.name != st.session_state.source_file_name:
 			try:
-				st.session_state.edited_text = read_uploaded_text(upload_edited)
-				st.session_state.edited_file_name = upload_edited.name
-				save_edited(local_storage)
-				st.success(f"Loaded {upload_edited.name}")
+				st.session_state.source_text = read_uploaded_text(upload_source)
+				st.session_state.source_file_name = upload_source.name
+				st.success(f"Loaded {upload_source.name}")
+			except RuntimeError as exc:
+				st.error(str(exc))
+			except Exception:
+				st.error("Could not read the file. Try a plain text export.")
+		st.text_area(
+			"Source content preview",
+			value=st.session_state.source_text,
+			height=220,
+			disabled=True,
+		)
+		source_wc = word_count(st.session_state.source_text)
+		if source_wc:
+			st.caption(f"Word count: {source_wc}")
+		st.button("Clear Section 2", on_click=clear_source, use_container_width=True)
+
+	section_bottom_left, section_bottom_right = st.columns(2, gap="large")
+
+	with section_bottom_left:
+		st.markdown("<div class='vt-card-title'>Section 3: AI-Generated Draft</div>", unsafe_allow_html=True)
+		st.text_input(
+			"Enter the prompt you used to generate the content (required)",
+			key="prompt_text",
+			placeholder="Paste the exact prompt used with the AI...",
+			on_change=lambda: save_prompt(local_storage),
+		)
+		if not st.session_state.prompt_text.strip():
+			st.warning("Prompt is required for report generation.")
+		upload_ai = st.file_uploader(
+			"Upload AI-generated text",
+			type=["pdf", "docx", "txt"],
+			key="ai_file",
+		)
+		if upload_ai and upload_ai.name != st.session_state.ai_file_name:
+			try:
+				st.session_state.ai_text = read_uploaded_text(upload_ai)
+				st.session_state.ai_file_name = upload_ai.name
+				save_ai(local_storage)
+				st.success(f"Loaded {upload_ai.name}")
 			except RuntimeError as exc:
 				st.error(str(exc))
 			except Exception:
 				st.error("Could not read the file. Try a plain text export.")
 
 		st.text_area(
-			"Paste AI-Edited Version",
-			key="edited_text",
-			height=240,
-			placeholder="Paste your AI-edited text here...",
-			on_change=lambda: save_edited(local_storage),
+			"Paste AI-generated draft",
+			key="ai_text",
+			height=220,
+			placeholder="Paste your AI-generated text here...",
+			on_change=lambda: save_ai(local_storage),
 		)
-		edited_wc = word_count(st.session_state.edited_text)
-		st.caption(f"Word count: {edited_wc}")
-		word_count_notice("AI-edited text", edited_wc)
-		st.button("Clear AI-Edited", on_click=lambda: clear_edited(local_storage), use_container_width=True)
+		ai_wc = word_count(st.session_state.ai_text)
+		st.caption(f"Word count: {ai_wc}")
+		word_count_notice("AI draft", ai_wc)
+		st.button("Clear Section 3", on_click=lambda: clear_ai(local_storage), use_container_width=True)
 
-	both_present = bool(st.session_state.original_text.strip()) and bool(
-		st.session_state.edited_text.strip()
+	with section_bottom_right:
+		st.markdown("<div class='vt-card-title'>Section 4: Writer Paraphrase (Your Rewrite)</div>", unsafe_allow_html=True)
+		upload_paraphrase = st.file_uploader(
+			"Upload your paraphrase",
+			type=["pdf", "docx", "txt"],
+			key="paraphrase_file",
+		)
+		if upload_paraphrase and upload_paraphrase.name != st.session_state.paraphrase_file_name:
+			try:
+				st.session_state.paraphrase_text = read_uploaded_text(upload_paraphrase)
+				st.session_state.paraphrase_file_name = upload_paraphrase.name
+				save_paraphrase(local_storage)
+				st.success(f"Loaded {upload_paraphrase.name}")
+			except RuntimeError as exc:
+				st.error(str(exc))
+			except Exception:
+				st.error("Could not read the file. Try a plain text export.")
+
+		st.text_area(
+			"Paste or write your paraphrase",
+			key="paraphrase_text",
+			height=220,
+			placeholder="Paste or write your rewrite here...",
+			on_change=lambda: save_paraphrase(local_storage),
+		)
+		paraphrase_wc = word_count(st.session_state.paraphrase_text)
+		st.caption(f"Word count: {paraphrase_wc}")
+		word_count_notice("Paraphrase", paraphrase_wc)
+		st.button("Clear Section 4", on_click=lambda: clear_paraphrase(local_storage), use_container_width=True)
+
+	all_present = (
+		bool(st.session_state.human_text.strip())
+		and bool(st.session_state.source_text.strip())
+		and bool(st.session_state.ai_text.strip())
+		and bool(st.session_state.paraphrase_text.strip())
+		and bool(st.session_state.prompt_text.strip())
 	)
-	if not both_present:
-		st.warning("Add both texts to enable analysis.")
+	if not all_present:
+		st.warning("Add all four texts and the AI prompt to enable analysis.")
 	st.button(
-		"Analyze Voice Preservation",
-		disabled=not both_present,
-		on_click=run_analysis if both_present else None,
+		"Run Analysis",
+		disabled=not all_present,
+		on_click=run_analysis if all_present else None,
 		use_container_width=True,
 	)
 
 	st.markdown(
-		"<div class='vt-footer'>Version 0.9.1 | Thesis Citation | Privacy</div>",
+		"<div class='vt-footer'>Version 0.9.2 | Thesis Citation | Privacy</div>",
 		unsafe_allow_html=True,
 	)
 
@@ -865,7 +982,7 @@ def render_dashboard_screen() -> None:
 		st.markdown(
 			f"""
 			<div class="vt-card vt-subtle">
-			  <div class="vt-card-title">Voice Preservation Score</div>
+			  <div class="vt-card-title">Voice Preservation Score (AI Source vs Writer Rewrite)</div>
 			  <div class="vt-card-value">{format_metric(analysis.score)}</div>
 			  <div class="vt-card-caption">{analysis.classification}</div>
 			</div>
@@ -891,9 +1008,9 @@ def render_dashboard_screen() -> None:
 			st.progress(min(max(int(value), 0), 100))
 		st.markdown("<div class='vt-section-title'>Quick Stats</div>", unsafe_allow_html=True)
 		stats = [
-			("Word Delta", analysis.word_delta, "Original vs edited"),
+			("Word Delta", analysis.word_delta, "AI source vs rewrite"),
 			("Sentence Delta", analysis.sentence_delta, "Structure change"),
-			("AI-isms", analysis.ai_ism_total, "Formulaic phrases"),
+			("AI-isms", analysis.ai_ism_total, "Writer rewrite phrases"),
 		]
 		for title, value, caption in stats:
 			st.markdown(
@@ -906,6 +1023,18 @@ def render_dashboard_screen() -> None:
 				""",
 				unsafe_allow_html=True,
 			)
+		st.markdown("<div class='vt-section-title'>Similarity Index</div>", unsafe_allow_html=True)
+		ai_similarity_cosine = getattr(analysis, "ai_similarity_cosine", 0.0)
+		ai_similarity_ngram = getattr(analysis, "ai_similarity_ngram", 0.0)
+		source_similarity_cosine = getattr(analysis, "source_similarity_cosine", 0.0)
+		source_similarity_ngram = getattr(analysis, "source_similarity_ngram", 0.0)
+		sim_left, sim_right = st.columns(2)
+		with sim_left:
+			st.metric("Source vs rewrite (cosine)", f"{source_similarity_cosine * 100:.1f}%")
+			st.metric("Source vs rewrite (n-gram)", f"{source_similarity_ngram * 100:.1f}%")
+		with sim_right:
+			st.metric("AI vs rewrite (cosine)", f"{ai_similarity_cosine * 100:.1f}%")
+			st.metric("AI vs rewrite (n-gram)", f"{ai_similarity_ngram * 100:.1f}%")
 		if analysis.score < 80 and st.button("Open Repair Preview", use_container_width=True):
 			st.session_state.page = "Repair Preview"
 			st.rerun()
@@ -936,8 +1065,8 @@ def render_dashboard_screen() -> None:
 				<div class="vt-card vt-subtle">
 				  <div class="vt-card-title">{label}</div>
 				  <div class="vt-metric-header">
-				    <span>Original: {format_metric(original_value)}</span>
-				    <span>Edited: {format_metric(edited_value)}</span>
+				    <span>AI Source: {format_metric(original_value)}</span>
+				    <span>Writer Rewrite: {format_metric(edited_value)}</span>
 				    <span>Delta: {format_metric(delta)}</span>
 				    <span class="vt-badge">{verdict}</span>
 				  </div>
@@ -951,7 +1080,7 @@ def render_dashboard_screen() -> None:
 					data=[
 						go.Bar(
 							x=[original_value, edited_value, human_value, ai_value],
-							y=["Original", "AI-Edited", "Human Std", "AI Std"],
+							y=["AI Source", "Writer Rewrite", "Human Std", "AI Std"],
 							orientation="h",
 							marker=dict(
 								color=[
@@ -977,14 +1106,14 @@ def render_dashboard_screen() -> None:
 				st.markdown(
 					f"""
 					<div class="vt-muted">{metric['description']}</div>
-					<div class="vt-muted">Edited text shows a {format_metric(abs(delta))} point change vs original.</div>
+					<div class="vt-muted">Rewrite shows a {format_metric(abs(delta))} point change vs AI source.</div>
 					""",
 					unsafe_allow_html=True,
 				)
 
 	else:
 		st.markdown("<div class='vt-section-title'>Visual Evidence</div>", unsafe_allow_html=True)
-		st.caption("Sentence rhythm across the text (green: original, red: AI-edited).")
+		st.caption("Sentence rhythm across the text (green: AI source, red: writer rewrite).")
 		st.plotly_chart(
 			build_line_chart(analysis.sentence_lengths),
 			use_container_width=True,
@@ -996,11 +1125,11 @@ def render_dashboard_screen() -> None:
 			use_container_width=True,
 			config=_plotly_download_config(),
 		)
-		st.caption("AI-ism category distribution.")
+		st.caption("AI-ism category distribution (AI source vs writer rewrite).")
 		original_ai_ism = getattr(analysis, "ai_ism_categories_original", analysis.ai_ism_categories)
 		pie_left, pie_right = st.columns(2)
 		with pie_left:
-			st.markdown("<div class='vt-muted'>Original (Human)</div>", unsafe_allow_html=True)
+			st.markdown("<div class='vt-muted'>AI Source</div>", unsafe_allow_html=True)
 			st.plotly_chart(
 				build_pie_chart(
 					original_ai_ism,
@@ -1010,7 +1139,7 @@ def render_dashboard_screen() -> None:
 				config=_plotly_download_config(),
 			)
 		with pie_right:
-			st.markdown("<div class='vt-muted'>AI-Edited</div>", unsafe_allow_html=True)
+			st.markdown("<div class='vt-muted'>Writer Rewrite</div>", unsafe_allow_html=True)
 			st.plotly_chart(
 				build_pie_chart(
 					analysis.ai_ism_categories,
@@ -1019,7 +1148,7 @@ def render_dashboard_screen() -> None:
 				use_container_width=True,
 				config=_plotly_download_config(),
 			)
-		with st.expander("AI-isms Detected"):
+		with st.expander("AI-isms Detected in Writer Rewrite"):
 			if analysis.ai_ism_phrases:
 				for phrase in analysis.ai_ism_phrases:
 					st.markdown(
@@ -1030,8 +1159,8 @@ def render_dashboard_screen() -> None:
 		st.markdown("<div class='vt-section-title'>Text Comparison</div>", unsafe_allow_html=True)
 		st.caption("Scroll either panel to sync. Differences are highlighted.")
 		render_comparison_panel(
-			st.session_state.original_text,
-			st.session_state.edited_text,
+			st.session_state.ai_text,
+			st.session_state.paraphrase_text,
 			panel_id="analysis-compare",
 			panel_height=320,
 		)
@@ -1052,7 +1181,7 @@ def render_repair_preview() -> None:
 	metric_focus = st.selectbox("Current Focus", options=options)
 	st.session_state.repair_metric = metric_focus
 	st.markdown(
-		f"<div class='vt-muted'>Negotiating voice preservation for: {metric_focus}</div>",
+		f"<div class='vt-muted'>Negotiating voice alignment for: {metric_focus}</div>",
 		unsafe_allow_html=True,
 	)
 	original_score = analysis.metrics_original.get(metric_focus, 0.0)
@@ -1065,30 +1194,44 @@ def render_repair_preview() -> None:
 	)
 	score_left, score_mid, score_right = st.columns(3)
 	with score_left:
-		st.metric("Original score", f"{original_score:.1f}")
+		st.metric("AI source score", f"{original_score:.1f}")
 	with score_mid:
 		delta_metric = edited_score - original_score
-		st.metric("AI-Edited score", f"{edited_score:.1f}", delta=f"{delta_metric:+.1f}")
+		st.metric("Writer rewrite score", f"{edited_score:.1f}", delta=f"{delta_metric:+.1f}")
 	with score_right:
 		delta_overall = projected_score - analysis.score
 		st.metric("Projected overall (estimate)", f"{projected_score:.1f}", delta=f"{delta_overall:+.1f}")
 	st.caption("Projected overall score is an estimate based on component weighting.")
+	st.markdown("<div class='vt-section-title'>Similarity Snapshot</div>", unsafe_allow_html=True)
+	ai_similarity_cosine = getattr(analysis, "ai_similarity_cosine", 0.0)
+	ai_similarity_ngram = getattr(analysis, "ai_similarity_ngram", 0.0)
+	source_similarity_cosine = getattr(analysis, "source_similarity_cosine", 0.0)
+	source_similarity_ngram = getattr(analysis, "source_similarity_ngram", 0.0)
+	sim_left, sim_mid, sim_right, sim_far = st.columns(4)
+	with sim_left:
+		st.metric("AI vs rewrite (cosine)", f"{ai_similarity_cosine * 100:.1f}%")
+	with sim_mid:
+		st.metric("AI vs rewrite (n-gram)", f"{ai_similarity_ngram * 100:.1f}%")
+	with sim_right:
+		st.metric("Source vs rewrite (cosine)", f"{source_similarity_cosine * 100:.1f}%")
+	with sim_far:
+		st.metric("Source vs rewrite (n-gram)", f"{source_similarity_ngram * 100:.1f}%")
 	st.markdown("<div class='vt-section-title'>Panel Layout</div>", unsafe_allow_html=True)
 	st.caption("Use the slider to adjust panel height. The radio selects which panel to view.")
 	panel_height = st.slider("Panel height", min_value=200, max_value=520, value=300, step=20, key="panel_height")
 	active_panel = st.radio(
 		"View",
-		options=["Your Original Voice", "AI Edit", "Your Choice"],
+		options=["AI Source", "Writer Rewrite", "Your Choice"],
 		horizontal=True,
 	)
 	panel_col = st.columns(1)[0]
 	with panel_col:
-		if active_panel == "Your Original Voice":
-			st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Original Voice</div></div>", unsafe_allow_html=True)
-			st.text_area("Original", value=st.session_state.original_text, height=panel_height, disabled=True)
-		elif active_panel == "AI Edit":
-			st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>AI Edit</div></div>", unsafe_allow_html=True)
-			st.text_area("AI Edit", value=st.session_state.edited_text, height=panel_height, disabled=True)
+		if active_panel == "AI Source":
+			st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>AI Source</div></div>", unsafe_allow_html=True)
+			st.text_area("AI Source", value=st.session_state.ai_text, height=panel_height, disabled=True)
+		elif active_panel == "Writer Rewrite":
+			st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>Writer Rewrite</div></div>", unsafe_allow_html=True)
+			st.text_area("Writer Rewrite", value=st.session_state.paraphrase_text, height=panel_height, disabled=True)
 		else:
 			st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Choice</div></div>", unsafe_allow_html=True)
 			choice = st.radio("Negotiated Options", options=["Option A", "Option B", "Option C", "Custom"], horizontal=True)
@@ -1101,8 +1244,10 @@ def render_repair_preview() -> None:
 				if not st.session_state.use_default_standards:
 					custom_standards = st.session_state.calibration
 				try:
-					custom_analysis = analyze_texts(
-						st.session_state.original_text,
+					custom_analysis = analyze_multitext(
+						st.session_state.human_text,
+						st.session_state.source_text,
+						st.session_state.ai_text,
 						custom_text,
 						custom_standards=custom_standards,
 					)
@@ -1119,8 +1264,8 @@ def render_repair_preview() -> None:
 	suggestions = _build_repair_suggestions(
 		metric_focus,
 		analysis,
-		st.session_state.original_text,
-		st.session_state.edited_text,
+		st.session_state.ai_text,
+		st.session_state.paraphrase_text,
 	)
 	for suggestion in suggestions:
 		st.markdown(f"- {suggestion}")
@@ -1134,7 +1279,7 @@ def render_repair_preview() -> None:
 		unsafe_allow_html=True,
 	)
 	st.markdown(
-		"<div class='vt-metric-rows'><span>Skip to Next Issue</span> | <span>Accept All AI Edits</span> | <span>Restore All Original</span> | <span>Generate Final Text</span></div>",
+		"<div class='vt-metric-rows'><span>Skip to Next Issue</span> | <span>Accept Rewrite</span> | <span>Restore AI Source</span> | <span>Generate Final Text</span></div>",
 		unsafe_allow_html=True,
 	)
 
@@ -1215,7 +1360,7 @@ def render_documentation_export() -> None:
 		"Full Metric Analysis",
 		"Visualizations",
 		"Repair Preview Decisions",
-		"Original vs Final Text Comparison",
+		"AI Source vs Writer Rewrite Comparison",
 		"Authorship Documentation Statement",
 	]:
 		st.checkbox(section, value=True)
@@ -1251,12 +1396,18 @@ apply_theme(st.session_state.theme_name)
 
 local_storage = LocalStorage() if LocalStorage else None
 load_calibration(local_storage)
-stored_original = local_storage.getItem(ORIGINAL_TEXT_KEY) if local_storage else ""
-stored_edited = local_storage.getItem(EDITED_TEXT_KEY) if local_storage else ""
-if not st.session_state.original_text:
-	st.session_state.original_text = stored_original or ""
-if not st.session_state.edited_text:
-	st.session_state.edited_text = stored_edited or ""
+stored_human = local_storage.getItem(HUMAN_TEXT_KEY) if local_storage else ""
+stored_ai = local_storage.getItem(AI_TEXT_KEY) if local_storage else ""
+stored_paraphrase = local_storage.getItem(PARAPHRASE_TEXT_KEY) if local_storage else ""
+stored_prompt = local_storage.getItem(PROMPT_TEXT_KEY) if local_storage else ""
+if not st.session_state.human_text:
+	st.session_state.human_text = stored_human or ""
+if not st.session_state.ai_text:
+	st.session_state.ai_text = stored_ai or ""
+if not st.session_state.paraphrase_text:
+	st.session_state.paraphrase_text = stored_paraphrase or ""
+if not st.session_state.prompt_text:
+	st.session_state.prompt_text = stored_prompt or ""
 
 render_header()
 

@@ -52,6 +52,10 @@ class AnalysisResult:
     ai_ism_categories: Dict[str, int]
     ai_ism_categories_original: Dict[str, int]
     ai_ism_phrases: List[Dict]
+    ai_similarity_cosine: float
+    ai_similarity_ngram: float
+    source_similarity_cosine: float
+    source_similarity_ngram: float
     sentence_lengths: Dict[str, List[int]]
     original_word_count: int
     edited_word_count: int
@@ -999,13 +1003,9 @@ class VoicePreservationScore:
         return min(penalty, self.AI_ISM_PENALTY_MAX)
 
     def _classify(self, score: float) -> Dict:
-        if score >= 80:
-            return {"label": "Strong Voice Preserved", "color": "green", "level": 1}
-        if score >= 60:
-            return {"label": "Moderate Homogenization", "color": "yellow", "level": 2}
-        if score >= 40:
-            return {"label": "Significant Homogenization", "color": "orange", "level": 3}
-        return {"label": "Severe Homogenization", "color": "red", "level": 4}
+        if score >= 70:
+            return {"label": "Voice Preserved", "color": "green", "level": 1}
+        return {"label": "Voice Lost", "color": "red", "level": 4}
 
 
 def analyze_texts(
@@ -1037,8 +1037,8 @@ def analyze_texts(
     ai_ism_categories_original = original_ai_ism_details.get("category_breakdown", {})
 
     sentence_lengths = {
-        "Original": _sentence_lengths(original_text),
-        "Edited": _sentence_lengths(edited_text),
+        "AI Source": _sentence_lengths(original_text),
+        "Writer Rewrite": _sentence_lengths(edited_text),
     }
 
     return AnalysisResult(
@@ -1056,12 +1056,35 @@ def analyze_texts(
         ai_ism_categories=ai_ism_categories,
         ai_ism_categories_original=ai_ism_categories_original,
         ai_ism_phrases=ai_ism_phrases,
+        ai_similarity_cosine=0.0,
+        ai_similarity_ngram=0.0,
+        source_similarity_cosine=0.0,
+        source_similarity_ngram=0.0,
         sentence_lengths=sentence_lengths,
         original_word_count=original_stats["word_count"],
         edited_word_count=edited_stats["word_count"],
         original_sentence_count=original_stats["sentence_count"],
         edited_sentence_count=edited_stats["sentence_count"],
     )
+
+
+def analyze_multitext(
+    human_text: str,
+    source_text: str,
+    ai_text: str,
+    paraphrase_text: str,
+    custom_standards: Optional[Dict[str, Dict[str, float]]] = None,
+) -> AnalysisResult:
+    analysis = analyze_texts(
+        ai_text,
+        paraphrase_text,
+        custom_standards=custom_standards,
+    )
+    analysis.ai_similarity_cosine = _tfidf_cosine_similarity(ai_text, paraphrase_text)
+    analysis.ai_similarity_ngram = _ngram_jaccard_similarity(ai_text, paraphrase_text)
+    analysis.source_similarity_cosine = _tfidf_cosine_similarity(source_text, paraphrase_text)
+    analysis.source_similarity_ngram = _ngram_jaccard_similarity(source_text, paraphrase_text)
+    return analysis
 
 
 def _format_metric_scores(results: Dict[str, MetricResult]) -> Dict[str, float]:
@@ -1080,6 +1103,62 @@ def _format_metric_scores(results: Dict[str, MetricResult]) -> Dict[str, float]:
         score = results[key].normalized_score * 100
         formatted[label] = round(score, 2)
     return formatted
+
+
+def _tokenize_words(text: str) -> List[str]:
+    return [token.lower() for token in re.findall(r"[A-Za-z']+", text)]
+
+
+def _tfidf_cosine_similarity(text_a: str, text_b: str) -> float:
+    tokens_a = _tokenize_words(text_a)
+    tokens_b = _tokenize_words(text_b)
+    if not tokens_a and not tokens_b:
+        return 0.0
+    docs = [tokens_a, tokens_b]
+    vocab = sorted({token for doc in docs for token in doc})
+    if not vocab:
+        return 0.0
+    tf_vectors: List[List[float]] = []
+    df_counts = {term: 0 for term in vocab}
+    for doc in docs:
+        counts: Dict[str, int] = {}
+        for token in doc:
+            counts[token] = counts.get(token, 0) + 1
+        for term in vocab:
+            if term in counts:
+                df_counts[term] += 1
+        total = float(len(doc)) if doc else 1.0
+        tf_vectors.append([counts.get(term, 0) / total for term in vocab])
+    n_docs = len(docs)
+    idf = [math.log((n_docs + 1) / (df_counts[term] + 1)) + 1 for term in vocab]
+    tfidf_vectors = []
+    for vec in tf_vectors:
+        tfidf_vectors.append([tf * idf_value for tf, idf_value in zip(vec, idf)])
+    return _cosine_similarity(tfidf_vectors[0], tfidf_vectors[1])
+
+
+def _cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
+    dot = sum(a * b for a, b in zip(vec_a, vec_b))
+    norm_a = math.sqrt(sum(a * a for a in vec_a))
+    norm_b = math.sqrt(sum(b * b for b in vec_b))
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return max(0.0, min(1.0, dot / (norm_a * norm_b)))
+
+
+def _ngram_jaccard_similarity(text_a: str, text_b: str, n: int = 3) -> float:
+    tokens_a = _tokenize_words(text_a)
+    tokens_b = _tokenize_words(text_b)
+    if len(tokens_a) < n or len(tokens_b) < n:
+        return 0.0
+    ngrams_a = set(tuple(tokens_a[i : i + n]) for i in range(len(tokens_a) - n + 1))
+    ngrams_b = set(tuple(tokens_b[i : i + n]) for i in range(len(tokens_b) - n + 1))
+    if not ngrams_a and not ngrams_b:
+        return 0.0
+    union = ngrams_a | ngrams_b
+    if not union:
+        return 0.0
+    return len(ngrams_a & ngrams_b) / len(union)
 
 
 def _format_component_scores(components: Dict[str, float]) -> Dict[str, float]:

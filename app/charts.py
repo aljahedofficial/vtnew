@@ -113,9 +113,10 @@ def build_line_chart(sentence_lengths: Dict[str, List[int]]) -> go.Figure:
     fig = go.Figure()
     for label, values in sentence_lengths.items():
         color = "#2563eb"
-        if label.lower() == "original":
+        label_lower = label.lower()
+        if label_lower in {"original", "ai source"}:
             color = "#16a34a"
-        elif label.lower() == "edited":
+        elif label_lower in {"edited", "writer rewrite", "ai-edited"}:
             color = "#ef4444"
         fig.add_trace(
             go.Scatter(

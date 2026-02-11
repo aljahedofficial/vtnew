@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
-ORIGINAL_TEXT_KEY = "vt_original_text"
-EDITED_TEXT_KEY = "vt_edited_text"
+HUMAN_TEXT_KEY = "vt_human_text"
+AI_TEXT_KEY = "vt_ai_text"
+PARAPHRASE_TEXT_KEY = "vt_paraphrase_text"
+PROMPT_TEXT_KEY = "vt_prompt_text"
 CALIBRATION_KEY = "vt_calibration"
