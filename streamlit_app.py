@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
+import difflib
+import html
 import math
-from typing import Dict, List
+import re
+from typing import Dict, List, Tuple
 
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 try:
 	from streamlit_local_storage import LocalStorage
@@ -225,6 +230,198 @@ def format_metric(value: object) -> str:
 	return str(value)
 
 
+_DIFF_TOKEN_RE = re.compile(r"\s+|[^\s]+")
+
+
+def _tokenize_for_diff(text: str) -> List[str]:
+	return _DIFF_TOKEN_RE.findall(text)
+
+
+def _build_diff_markup(original_text: str, edited_text: str) -> Tuple[str, str]:
+	original_tokens = _tokenize_for_diff(original_text)
+	edited_tokens = _tokenize_for_diff(edited_text)
+	matcher = difflib.SequenceMatcher(a=original_tokens, b=edited_tokens)
+	original_output: List[str] = []
+	edited_output: List[str] = []
+
+	def wrap_span(segment: str, class_name: str) -> str:
+		if not segment:
+			return ""
+		return f"<span class=\"{class_name}\">{segment}</span>"
+
+	for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+		original_segment = "".join(html.escape(token) for token in original_tokens[i1:i2])
+		edited_segment = "".join(html.escape(token) for token in edited_tokens[j1:j2])
+		if tag == "equal":
+			original_output.append(original_segment)
+			edited_output.append(edited_segment)
+		elif tag == "delete":
+			original_output.append(wrap_span(original_segment, "vt-diff-remove"))
+		elif tag == "insert":
+			edited_output.append(wrap_span(edited_segment, "vt-diff-add"))
+		elif tag == "replace":
+			original_output.append(wrap_span(original_segment, "vt-diff-remove"))
+			edited_output.append(wrap_span(edited_segment, "vt-diff-add"))
+
+	return "".join(original_output), "".join(edited_output)
+
+
+def render_comparison_panel(
+	original_text: str,
+	edited_text: str,
+	panel_id: str,
+	panel_height: int = 280,
+) -> None:
+	original_markup, edited_markup = _build_diff_markup(original_text, edited_text)
+	html_block = f"""
+	<div class=\"vt-compare-grid\" id=\"{panel_id}\">
+	  <div class=\"vt-compare-wrapper\">
+	    <div class=\"vt-compare-label\">Original</div>
+	    <div class=\"vt-compare-panel\" id=\"{panel_id}-left\">
+	      <div class=\"vt-compare-text\">{original_markup}</div>
+	    </div>
+	  </div>
+	  <div class=\"vt-compare-wrapper\">
+	    <div class=\"vt-compare-label\">AI-Edited</div>
+	    <div class=\"vt-compare-panel\" id=\"{panel_id}-right\">
+	      <div class=\"vt-compare-text\">{edited_markup}</div>
+	    </div>
+	  </div>
+	</div>
+	<script>
+	(function() {{
+	  const left = document.getElementById("{panel_id}-left");
+	  const right = document.getElementById("{panel_id}-right");
+	  if (!left || !right) return;
+	  let syncing = false;
+	  const syncScroll = (source, target) => () => {{
+	    if (syncing) return;
+	    syncing = true;
+	    target.scrollTop = source.scrollTop;
+	    target.scrollLeft = source.scrollLeft;
+	    syncing = false;
+	  }};
+	  left.addEventListener("scroll", syncScroll(left, right));
+	  right.addEventListener("scroll", syncScroll(right, left));
+	}})();
+	</script>
+	"""
+	components.html(html_block, height=panel_height, scrolling=False)
+
+
+def _estimate_projected_score(
+	analysis: "AnalysisResult",
+	metric_label: str,
+	original_score: float,
+	edited_score: float,
+) -> float:
+	weights = {
+		"Burstiness": 0.25,
+		"Lexical Diversity": 0.20,
+		"Syntactic Complexity": 0.20,
+		"Epistemic Hedging": 0.25,
+	}
+	delta = original_score - edited_score
+	weight = weights.get(metric_label, 0.08)
+	projected = analysis.score + (delta * weight)
+	return max(0.0, min(100.0, projected))
+
+
+def _top_repeated_words(text: str, limit: int = 4) -> List[str]:
+	stopwords = {
+		"the",
+		"and",
+		"that",
+		"with",
+		"from",
+		"this",
+		"there",
+		"their",
+		"which",
+		"into",
+		"for",
+		"are",
+		"was",
+		"were",
+		"has",
+		"have",
+		"had",
+		"but",
+		"not",
+		"you",
+		"your",
+		"they",
+		"them",
+		"its",
+		"can",
+		"may",
+		"might",
+		"would",
+		"could",
+	}
+	words = re.findall(r"[A-Za-z']+", text.lower())
+	filtered = [word for word in words if word not in stopwords and len(word) > 3]
+	counts = Counter(filtered)
+	return [word for word, _ in counts.most_common(limit) if counts[word] > 2]
+
+
+def _build_repair_suggestions(
+	metric_label: str,
+	analysis: "AnalysisResult",
+	original_text: str,
+	edited_text: str,
+) -> List[str]:
+	suggestions: List[str] = []
+	if metric_label == "AI-ism Likelihood":
+		phrases = [phrase.get("phrase", "") for phrase in analysis.ai_ism_phrases[:3]]
+		phrases = [phrase for phrase in phrases if phrase]
+		if phrases:
+			suggestions.append(
+				"Rewrite or remove these phrases: " + ", ".join(phrases)
+			)
+			suggestions.append("Use direct verbs and concrete nouns over scaffolding clauses.")
+		else:
+			suggestions.append("Reduce template phrases and tighten transitions between ideas.")
+	elif metric_label == "Burstiness":
+		lengths = analysis.sentence_lengths.get("Edited", [])
+		if lengths:
+			shortest = min(lengths)
+			longest = max(lengths)
+			suggestions.append(
+				f"Split the longest sentence (~{longest} words) or merge very short ones (~{shortest} words)."
+			)
+		suggestions.append("Mix short, medium, and long sentences to restore rhythm.")
+	elif metric_label == "Lexical Diversity":
+		repeats = _top_repeated_words(edited_text)
+		if repeats:
+			suggestions.append("Replace repeated words: " + ", ".join(repeats))
+		suggestions.append("Vary verbs and adjectives that appear in consecutive sentences.")
+	elif metric_label == "Syntactic Complexity":
+		suggestions.append("Add one subordinate clause to key sentences to reflect your original structure.")
+		suggestions.append("Balance simple statements with one or two layered sentences per paragraph.")
+	elif metric_label == "Function Word Ratio":
+		suggestions.append("Trim filler words such as 'that', 'just', and 'really'.")
+		suggestions.append("Prefer precise nouns and verbs over connector-heavy phrasing.")
+	elif metric_label == "Discourse Markers":
+		details = analysis.metric_results["discourse_marker_density"].details
+		marker_count = details.get("total_markers", 0)
+		suggestions.append(f"Reduce transition markers (current count: {marker_count}).")
+		suggestions.append("Keep one transition per paragraph, and let sentence order do the work.")
+	elif metric_label == "Information Density":
+		details = analysis.metric_results["information_density"].details
+		content_words = details.get("content_words", 0)
+		suggestions.append(f"Add concrete nouns or numbers to raise content words (now {content_words}).")
+		suggestions.append("Replace abstract fillers with specific examples or observations.")
+	elif metric_label == "Epistemic Hedging":
+		details = analysis.metric_results["epistemic_hedging"].details
+		headges = details.get("hedge_count", 0)
+		suggestions.append(f"Reintroduce cautious wording where appropriate (hedges: {hedges}).")
+		suggestions.append("Balance certainty with qualifiers like 'likely' or 'suggests'.")
+	else:
+		suggestions.append("Review highlighted changes and restore any phrasing that sounds less like you.")
+	return suggestions
+
+
 def word_count_notice(label: str, count: int) -> None:
 	if count == 0:
 		return
@@ -314,9 +511,15 @@ def run_analysis() -> None:
 	custom_standards = None
 	if not st.session_state.use_default_standards:
 		custom_standards = st.session_state.calibration
+	original_text = st.session_state.original_text
+	edited_text = st.session_state.edited_text
+	if not isinstance(original_text, str):
+		original_text = str(original_text or "")
+	if not isinstance(edited_text, str):
+		edited_text = str(edited_text or "")
 	st.session_state.analysis = analyze_texts(
-		st.session_state.original_text,
-		st.session_state.edited_text,
+		original_text,
+		edited_text,
 		custom_standards=custom_standards,
 	)
 
@@ -613,21 +816,13 @@ def render_dashboard_screen() -> None:
 			else:
 				st.markdown("- No AI-isms detected.")
 		st.markdown("<div class='vt-section-title'>Text Comparison</div>", unsafe_allow_html=True)
-		comp_left, comp_right = st.columns(2)
-		with comp_left:
-			st.text_area(
-				"Original Excerpt",
-				value=st.session_state.original_text,
-				height=200,
-				disabled=True,
-			)
-		with comp_right:
-			st.text_area(
-				"AI-Edited Excerpt",
-				value=st.session_state.edited_text,
-				height=200,
-				disabled=True,
-			)
+		st.caption("Scroll either panel to sync. Differences are highlighted.")
+		render_comparison_panel(
+			st.session_state.original_text,
+			st.session_state.edited_text,
+			panel_id="analysis-compare",
+			panel_height=320,
+		)
 
 
 def render_repair_preview() -> None:
@@ -648,6 +843,24 @@ def render_repair_preview() -> None:
 		f"<div class='vt-muted'>Negotiating voice preservation for: {metric_focus}</div>",
 		unsafe_allow_html=True,
 	)
+	original_score = analysis.metrics_original.get(metric_focus, 0.0)
+	edited_score = analysis.metrics_edited.get(metric_focus, 0.0)
+	projected_score = _estimate_projected_score(
+		analysis,
+		metric_focus,
+		original_score,
+		edited_score,
+	)
+	score_left, score_mid, score_right = st.columns(3)
+	with score_left:
+		st.metric("Original score", f"{original_score:.1f}")
+	with score_mid:
+		delta_metric = edited_score - original_score
+		st.metric("AI-Edited score", f"{edited_score:.1f}", delta=f"{delta_metric:+.1f}")
+	with score_right:
+		delta_overall = projected_score - analysis.score
+		st.metric("Projected overall (estimate)", f"{projected_score:.1f}", delta=f"{delta_overall:+.1f}")
+	st.caption("Projected overall score is an estimate based on component weighting.")
 	col_left, col_mid, col_right = st.columns([1, 1, 1.3], gap="large")
 	with col_left:
 		st.markdown("<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Original Voice</div></div>", unsafe_allow_html=True)
@@ -662,6 +875,30 @@ def render_repair_preview() -> None:
 		if choice == "Custom":
 			custom_text = st.text_area("Custom Rewrite", height=180)
 		st.button("Apply Selection", use_container_width=True)
+		if choice == "Custom" and custom_text.strip():
+			custom_standards = None
+			if not st.session_state.use_default_standards:
+				custom_standards = st.session_state.calibration
+			try:
+				custom_analysis = analyze_texts(
+					st.session_state.original_text,
+					custom_text,
+					custom_standards=custom_standards,
+				)
+				delta_custom = custom_analysis.score - analysis.score
+				st.metric("Custom overall score", f"{custom_analysis.score:.1f}", delta=f"{delta_custom:+.1f}")
+			except ValueError:
+				st.warning("Custom text is too short to score reliably.")
+
+	st.markdown("<div class='vt-section-title'>Repair Suggestions</div>", unsafe_allow_html=True)
+	suggestions = _build_repair_suggestions(
+		metric_focus,
+		analysis,
+		st.session_state.original_text,
+		st.session_state.edited_text,
+	)
+	for suggestion in suggestions:
+		st.markdown(f"- {suggestion}")
 	st.markdown(
 		"""
 		<div class="vt-card vt-subtle">
