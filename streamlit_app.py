@@ -598,6 +598,10 @@ def init_state() -> None:
 		st.session_state.defaults_reset_notice = False
 	if "analysis_notice" not in st.session_state:
 		st.session_state.analysis_notice = False
+	if "auto_load_notice" not in st.session_state:
+		st.session_state.auto_load_notice = ""
+	if "auto_load_notice_kind" not in st.session_state:
+		st.session_state.auto_load_notice_kind = "info"
 
 
 def save_human(local_storage: LocalStorage | None) -> None:
@@ -668,11 +672,13 @@ def auto_load_text(
 	file_name_key: str | None = None,
 ) -> None:
 	if not local_storage:
-		st.info("Autosave is unavailable because streamlit-local-storage is missing.")
+		st.session_state.auto_load_notice = "Autosave is unavailable because streamlit-local-storage is missing."
+		st.session_state.auto_load_notice_kind = "error"
 		return
 	stored = local_storage.getItem(storage_key)
 	if not stored:
-		st.info(f"No saved {label} text found.")
+		st.session_state.auto_load_notice = f"No saved {label} text found."
+		st.session_state.auto_load_notice_kind = "info"
 		return
 	if not isinstance(stored, str):
 		stored = str(stored)
@@ -680,7 +686,8 @@ def auto_load_text(
 	if file_name_key:
 		st.session_state[file_name_key] = None
 	st.session_state.analysis = None
-	st.success(f"Auto loaded saved {label} text.")
+	st.session_state.auto_load_notice = f"Auto loaded saved {label} text."
+	st.session_state.auto_load_notice_kind = "success"
 
 
 def _coerce_calibration(data: object) -> Dict[str, Dict[str, float]] | None:
@@ -890,6 +897,17 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		)
 
 	st.markdown("<div class='vt-section-title'>Text Inputs</div>", unsafe_allow_html=True)
+	if st.session_state.auto_load_notice:
+		notice = st.session_state.auto_load_notice
+		kind = st.session_state.auto_load_notice_kind
+		if kind == "success":
+			st.success(notice)
+		elif kind == "error":
+			st.error(notice)
+		else:
+			st.info(notice)
+		st.session_state.auto_load_notice = ""
+		st.session_state.auto_load_notice_kind = "info"
 	section_top_left, section_top_right = st.columns(2, gap="large")
 
 	with section_top_left:
@@ -922,8 +940,13 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		word_count_notice("Human baseline", human_wc)
 		human_actions_left, human_actions_right = st.columns(2)
 		with human_actions_left:
-			if st.button("Auto Load", key="auto_load_human", use_container_width=True):
-				auto_load_text(local_storage, HUMAN_TEXT_KEY, "human_text", "human baseline", "human_file_name")
+			st.button(
+				"Auto Load",
+				key="auto_load_human",
+				use_container_width=True,
+				on_click=auto_load_text,
+				args=(local_storage, HUMAN_TEXT_KEY, "human_text", "human baseline", "human_file_name"),
+			)
 		with human_actions_right:
 			st.button("Clear Section 1", on_click=lambda: clear_human(local_storage), use_container_width=True)
 
@@ -955,8 +978,13 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 			st.caption(f"Word count: {source_wc}")
 		source_actions_left, source_actions_right = st.columns(2)
 		with source_actions_left:
-			if st.button("Auto Load", key="auto_load_source", use_container_width=True):
-				auto_load_text(local_storage, SOURCE_TEXT_KEY, "source_text", "source material", "source_file_name")
+			st.button(
+				"Auto Load",
+				key="auto_load_source",
+				use_container_width=True,
+				on_click=auto_load_text,
+				args=(local_storage, SOURCE_TEXT_KEY, "source_text", "source material", "source_file_name"),
+			)
 		with source_actions_right:
 			st.button("Clear Section 2", on_click=lambda: clear_source(local_storage), use_container_width=True)
 
@@ -1000,8 +1028,13 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		word_count_notice("AI draft", ai_wc)
 		ai_actions_left, ai_actions_right = st.columns(2)
 		with ai_actions_left:
-			if st.button("Auto Load", key="auto_load_ai", use_container_width=True):
-				auto_load_text(local_storage, AI_TEXT_KEY, "ai_text", "AI draft", "ai_file_name")
+			st.button(
+				"Auto Load",
+				key="auto_load_ai",
+				use_container_width=True,
+				on_click=auto_load_text,
+				args=(local_storage, AI_TEXT_KEY, "ai_text", "AI draft", "ai_file_name"),
+			)
 		with ai_actions_right:
 			st.button("Clear Section 3", on_click=lambda: clear_ai(local_storage), use_container_width=True)
 
@@ -1035,8 +1068,13 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		word_count_notice("Paraphrase", paraphrase_wc)
 		paraphrase_actions_left, paraphrase_actions_right = st.columns(2)
 		with paraphrase_actions_left:
-			if st.button("Auto Load", key="auto_load_paraphrase", use_container_width=True):
-				auto_load_text(local_storage, PARAPHRASE_TEXT_KEY, "paraphrase_text", "paraphrase", "paraphrase_file_name")
+			st.button(
+				"Auto Load",
+				key="auto_load_paraphrase",
+				use_container_width=True,
+				on_click=auto_load_text,
+				args=(local_storage, PARAPHRASE_TEXT_KEY, "paraphrase_text", "paraphrase", "paraphrase_file_name"),
+			)
 		with paraphrase_actions_right:
 			st.button("Clear Section 4", on_click=lambda: clear_paraphrase(local_storage), use_container_width=True)
 
