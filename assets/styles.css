@@ -133,6 +133,14 @@ body {
   overflow: auto;
 }
 
+.vt-similarity-block {
+  margin-bottom: 10px;
+}
+
+.vt-similarity-block:last-child {
+  margin-bottom: 0;
+}
+
 .vt-compare-text {
   white-space: pre-wrap;
   font-family: "Courier New", Courier, monospace;

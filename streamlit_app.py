@@ -450,12 +450,22 @@ def _build_similarity_highlight(
 
 
 def _render_similarity_panels(source_text: str, ai_text: str, rewrite_text: str) -> None:
-	source_markup = _build_similarity_highlight(
+	source_base_markup = _build_similarity_highlight(
+		rewrite_text,
+		source_text,
+		"vt-highlight-source",
+	)
+	source_rewrite_markup = _build_similarity_highlight(
 		source_text,
 		rewrite_text,
 		"vt-highlight-source",
 	)
-	ai_markup = _build_similarity_highlight(
+	ai_base_markup = _build_similarity_highlight(
+		rewrite_text,
+		ai_text,
+		"vt-highlight-ai",
+	)
+	ai_rewrite_markup = _build_similarity_highlight(
 		ai_text,
 		rewrite_text,
 		"vt-highlight-ai",
@@ -467,7 +477,14 @@ def _render_similarity_panels(source_text: str, ai_text: str, rewrite_text: str)
 			<div class="vt-compare-wrapper">
 			  <div class="vt-compare-label">Source vs rewrite (cosine)</div>
 			  <div class="vt-similarity-panel">
-			    <div class="vt-compare-text">{source_markup}</div>
+			    <div class="vt-similarity-block">
+			      <div class="vt-compare-label">Source</div>
+			      <div class="vt-compare-text">{source_base_markup}</div>
+			    </div>
+			    <div class="vt-similarity-block">
+			      <div class="vt-compare-label">Rewrite</div>
+			      <div class="vt-compare-text">{source_rewrite_markup}</div>
+			    </div>
 			  </div>
 			</div>
 			""",
@@ -479,7 +496,14 @@ def _render_similarity_panels(source_text: str, ai_text: str, rewrite_text: str)
 			<div class="vt-compare-wrapper">
 			  <div class="vt-compare-label">AI vs rewrite (cosine)</div>
 			  <div class="vt-similarity-panel">
-			    <div class="vt-compare-text">{ai_markup}</div>
+			    <div class="vt-similarity-block">
+			      <div class="vt-compare-label">AI Source</div>
+			      <div class="vt-compare-text">{ai_base_markup}</div>
+			    </div>
+			    <div class="vt-similarity-block">
+			      <div class="vt-compare-label">Rewrite</div>
+			      <div class="vt-compare-text">{ai_rewrite_markup}</div>
+			    </div>
 			  </div>
 			</div>
 			""",
