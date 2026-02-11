@@ -1461,7 +1461,7 @@ def render_dashboard_screen() -> None:
 	st.markdown("<div class='vt-section-title'>Analysis View</div>", unsafe_allow_html=True)
 	section = st.radio(
 		"",
-		options=["Executive Summary", "Metric Deep-Dive", "Visual Evidence"],
+		options=["Executive Summary", "Metric Deep-Dive", "Visual Evidence", "Data only"],
 		horizontal=True,
 	)
 
@@ -1627,6 +1627,86 @@ def render_dashboard_screen() -> None:
 					""",
 					unsafe_allow_html=True,
 				)
+
+		elif section == "Data only":
+			st.markdown("<div class='vt-section-title'>Data Only</div>", unsafe_allow_html=True)
+			st.markdown("<div class='vt-muted'>All metrics listed without charts.</div>", unsafe_allow_html=True)
+
+			overall_rows = [
+				("Voice Preservation Score", format_metric(analysis.score)),
+				("Classification", analysis.classification),
+				("Consistency Score", format_metric(analysis.consistency_score)),
+			]
+			overall_table = "| Item | Value |\n|---|---|\n" + "\n".join(
+				f"| {label} | {value} |" for label, value in overall_rows
+			)
+			st.markdown(overall_table)
+
+			components = [
+				("Authenticity Markers", format_metric(analysis.components.get("Authenticity", 0.0))),
+				("Lexical Identity", format_metric(analysis.components.get("Lexical", 0.0))),
+				("Structural Identity", format_metric(analysis.components.get("Structural", 0.0))),
+				("Stylistic Identity", format_metric(analysis.components.get("Stylistic", 0.0))),
+				("Voice Consistency", format_metric(analysis.consistency_score)),
+			]
+			component_table = "| Component | Score |\n|---|---|\n" + "\n".join(
+				f"| {label} | {value} |" for label, value in components
+			)
+			st.markdown(component_table)
+
+			stats = [
+				("Word Delta", analysis.word_delta),
+				("Sentence Delta", analysis.sentence_delta),
+				("AI-isms", analysis.ai_ism_total),
+				("Original word count", analysis.original_word_count),
+				("Rewrite word count", analysis.edited_word_count),
+				("Original sentence count", analysis.original_sentence_count),
+				("Rewrite sentence count", analysis.edited_sentence_count),
+			]
+			stats_table = "| Stat | Value |\n|---|---|\n" + "\n".join(
+				f"| {label} | {value} |" for label, value in stats
+			)
+			st.markdown(stats_table)
+
+			similarity_rows = [
+				("Source vs rewrite (cosine)", f"{analysis.source_similarity_cosine * 100:.1f}%"),
+				("Source vs rewrite (n-gram)", f"{analysis.source_similarity_ngram * 100:.1f}%"),
+				("AI vs rewrite (cosine)", f"{analysis.ai_similarity_cosine * 100:.1f}%"),
+				("AI vs rewrite (n-gram)", f"{analysis.ai_similarity_ngram * 100:.1f}%"),
+			]
+			similarity_table = "| Similarity Metric | Value |\n|---|---|\n" + "\n".join(
+				f"| {label} | {value} |" for label, value in similarity_rows
+			)
+			st.markdown(similarity_table)
+
+			metric_rows = []
+			for metric in METRICS:
+				label = metric["label"]
+				key = metric["key"]
+				original_value = analysis.metrics_original.get(label, 0.0)
+				edited_value = analysis.metrics_edited.get(label, 0.0)
+				delta = edited_value - original_value
+				verdict = analysis.metric_results[key].verdict
+				normalized_score = analysis.metric_results[key].normalized_score
+				metric_rows.append(
+					(
+						label,
+						format_metric(original_value),
+						format_metric(edited_value),
+						format_metric(delta),
+						verdict,
+						format_metric(normalized_score),
+					)
+				)
+			metric_table = (
+				"| Metric | AI Source | Writer Rewrite | Delta | Verdict | Normalized |\n"
+				"|---|---|---|---|---|---|\n"
+				+ "\n".join(
+					f"| {label} | {ai} | {rewrite} | {delta} | {verdict} | {normalized} |"
+					for label, ai, rewrite, delta, verdict, normalized in metric_rows
+				)
+			)
+			st.markdown(metric_table)
 
 	else:
 		st.markdown("<div class='vt-section-title'>Visual Evidence</div>", unsafe_allow_html=True)
