@@ -1537,6 +1537,7 @@ def render_dashboard_screen() -> None:
 			edited_value = analysis.metrics_edited.get(label, 0.0)
 			delta = edited_value - original_value
 			verdict = analysis.metric_results[key].verdict
+			normalized_score = analysis.metric_results[key].normalized_score
 			standards = analysis.metric_standards.get(label, {})
 			human_value = standards.get("human", 0.0)
 			ai_value = standards.get("ai", 0.0)
@@ -1556,6 +1557,20 @@ def render_dashboard_screen() -> None:
 				unsafe_allow_html=True,
 			)
 			with st.expander("Details"):
+				if verdict == "Preserved":
+					verdict_condition = "normalized score $\geq 0.70$"
+				elif verdict == "Moderate":
+					verdict_condition = "normalized score $\geq 0.40$ and $< 0.70$"
+				else:
+					verdict_condition = "normalized score $< 0.40$"
+				st.markdown(
+					f"""
+					- AI Source value = {format_metric(original_value)} (metric computed on the AI source text)
+					- Writer Rewrite value = {format_metric(edited_value)} (metric computed on the rewrite)
+					- Delta = {format_metric(delta)} where $\Delta = \text{{Rewrite}} - \text{{AI Source}}$
+					- Verdict condition: {verdict_condition} (current normalized score: {format_metric(normalized_score)})
+					"""
+				)
 				mini = go.Figure(
 					data=[
 						go.Bar(
