@@ -362,6 +362,7 @@ def _plotly_download_config() -> Dict[str, object]:
 
 
 _DIFF_TOKEN_RE = re.compile(r"\s+|[^\s]+")
+_WORD_RE = re.compile(r"\b\w+\b")
 
 
 def _tokenize_for_diff(text: str) -> List[str]:
@@ -395,6 +396,95 @@ def _build_diff_markup(original_text: str, edited_text: str) -> Tuple[str, str]:
 			edited_output.append(wrap_span(edited_segment, "vt-diff-add"))
 
 	return "".join(original_output), "".join(edited_output)
+
+
+def _build_similarity_highlight(
+	base_text: str,
+	rewrite_text: str,
+	highlight_class: str,
+) -> str:
+	if not base_text or not rewrite_text:
+		return html.escape(rewrite_text or "")
+
+	base_words = [w.lower() for w in _WORD_RE.findall(base_text)]
+	rewrite_words = [w.lower() for w in _WORD_RE.findall(rewrite_text)]
+	base_word_set = set(base_words)
+
+	def build_ngrams(words: List[str], size: int) -> set[str]:
+		return {
+			" ".join(words[idx : idx + size])
+			for idx in range(len(words) - size + 1)
+		}
+
+	base_trigrams = build_ngrams(base_words, 3)
+	base_bigrams = build_ngrams(base_words, 2)
+	word_hits = [False] * len(rewrite_words)
+
+	for size, ngrams in ((3, base_trigrams), (2, base_bigrams)):
+		if not ngrams:
+			continue
+		for idx in range(len(rewrite_words) - size + 1):
+			ngram = " ".join(rewrite_words[idx : idx + size])
+			if ngram in ngrams:
+				for offset in range(size):
+					word_hits[idx + offset] = True
+
+	for idx, word in enumerate(rewrite_words):
+		if word in base_word_set:
+			word_hits[idx] = True
+
+	output: List[str] = []
+	word_index = 0
+	for token in _DIFF_TOKEN_RE.findall(rewrite_text):
+		if _WORD_RE.fullmatch(token):
+			escaped = html.escape(token)
+			if word_index < len(word_hits) and word_hits[word_index]:
+				output.append(f"<span class=\"{highlight_class}\">{escaped}</span>")
+			else:
+				output.append(escaped)
+			word_index += 1
+		else:
+			output.append(html.escape(token))
+
+	return "".join(output)
+
+
+def _render_similarity_panels(source_text: str, ai_text: str, rewrite_text: str) -> None:
+	source_markup = _build_similarity_highlight(
+		source_text,
+		rewrite_text,
+		"vt-highlight-source",
+	)
+	ai_markup = _build_similarity_highlight(
+		ai_text,
+		rewrite_text,
+		"vt-highlight-ai",
+	)
+	left_col, right_col = st.columns(2)
+	with left_col:
+		st.markdown(
+			f"""
+			<div class="vt-compare-wrapper">
+			  <div class="vt-compare-label">Source vs rewrite (cosine)</div>
+			  <div class="vt-similarity-panel">
+			    <div class="vt-compare-text">{source_markup}</div>
+			  </div>
+			</div>
+			""",
+			unsafe_allow_html=True,
+		)
+	with right_col:
+		st.markdown(
+			f"""
+			<div class="vt-compare-wrapper">
+			  <div class="vt-compare-label">AI vs rewrite (cosine)</div>
+			  <div class="vt-similarity-panel">
+			    <div class="vt-compare-text">{ai_markup}</div>
+			  </div>
+			</div>
+			""",
+			unsafe_allow_html=True,
+		)
 
 
 def render_comparison_panel(
@@ -1362,6 +1452,15 @@ def render_dashboard_screen() -> None:
 		with sim_right:
 			st.metric("AI vs rewrite (cosine)", f"{ai_similarity_cosine * 100:.1f}%")
 			st.metric("AI vs rewrite (n-gram)", f"{ai_similarity_ngram * 100:.1f}%")
+		st.markdown(
+			"<div class='vt-muted'>Highlighted matches are based on overlapping phrases and shared words.</div>",
+			unsafe_allow_html=True,
+		)
+		_render_similarity_panels(
+			st.session_state.source_text,
+			st.session_state.ai_text,
+			st.session_state.paraphrase_text,
+		)
 		if analysis.score < 80 and st.button("Open Repair Preview", use_container_width=True):
 			st.session_state.page = "Repair Preview"
 			st.rerun()
@@ -1537,6 +1636,15 @@ def render_repair_preview() -> None:
 		st.metric("Source vs rewrite (cosine)", f"{source_similarity_cosine * 100:.1f}%")
 	with sim_far:
 		st.metric("Source vs rewrite (n-gram)", f"{source_similarity_ngram * 100:.1f}%")
+	st.markdown(
+		"<div class='vt-muted'>Highlighted matches are based on overlapping phrases and shared words.</div>",
+		unsafe_allow_html=True,
+	)
+	_render_similarity_panels(
+		st.session_state.source_text,
+		st.session_state.ai_text,
+		st.session_state.paraphrase_text,
+	)
 	st.markdown("<div class='vt-section-title'>Panel Layout</div>", unsafe_allow_html=True)
 	st.caption("Use the slider to adjust panel height. The radio selects which panel to view.")
 	panel_height = st.slider("Panel height", min_value=200, max_value=520, value=300, step=20, key="panel_height")

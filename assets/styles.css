@@ -124,6 +124,15 @@ body {
   overflow: auto;
 }
 
+.vt-similarity-panel {
+  border: 1px solid var(--vt-divider);
+  border-radius: 8px;
+  background: var(--vt-surface);
+  padding: 12px;
+  height: 220px;
+  overflow: auto;
+}
+
 .vt-compare-text {
   white-space: pre-wrap;
   font-family: "Courier New", Courier, monospace;
@@ -143,6 +152,18 @@ body {
   border-radius: 4px;
   padding: 0 2px;
   text-decoration: line-through;
+}
+
+.vt-highlight-source {
+  background: rgba(250, 204, 21, 0.35);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.vt-highlight-ai {
+  background: rgba(251, 146, 60, 0.35);
+  border-radius: 4px;
+  padding: 0 2px;
 }
 
 .vt-card-title {
