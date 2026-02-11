@@ -1708,7 +1708,7 @@ def render_dashboard_screen() -> None:
 			)
 			st.markdown(metric_table)
 
-	else:
+		elif section == "Visual Evidence":
 		st.markdown("<div class='vt-section-title'>Visual Evidence</div>", unsafe_allow_html=True)
 		st.caption("Sentence rhythm across the text (green: AI source, red: writer rewrite).")
 		st.plotly_chart(
