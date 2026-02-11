@@ -199,6 +199,16 @@ METRICS = [
 		"description": "Measures hedging language and caution markers.",
 	},
 ]
+METRIC_FORMULAS: Dict[str, str] = {
+	"Burstiness": "$\\sigma_{len} / \\mu_{len}$",
+	"Lexical Diversity": "short text $\\text{TTR} = \\frac{\\text{unique}}{\\text{total}}$, else MTLD",
+	"Syntactic Complexity": "$0.6 \\cdot \\text{subordination ratio} + 0.4 \\cdot \\min(\\text{avg len}/30, 1)$",
+	"AI-ism Likelihood": "$\\frac{\\text{weighted phrase count}}{\\text{word count}} \\cdot 100$",
+	"Function Word Ratio": "$\\frac{\\text{function words}}{\\text{word count}}$",
+	"Discourse Marker Density": "$\\frac{\\text{marker count}}{\\text{word count}} \\cdot 100$",
+	"Information Density": "$0.7 \\cdot \\text{content ratio} + 0.3 \\cdot \\text{proper noun ratio}$",
+	"Epistemic Hedging": "$\\frac{\\max(0, \\text{hedge} - 0.5 \\cdot \\text{certainty})}{\\text{word count}} \\cdot 100$",
+}
 
 PRESET_SETS = [
 	{
@@ -1541,6 +1551,7 @@ def render_dashboard_screen() -> None:
 			standards = analysis.metric_standards.get(label, {})
 			human_value = standards.get("human", 0.0)
 			ai_value = standards.get("ai", 0.0)
+				formula_text = METRIC_FORMULAS.get(label, "formula unavailable")
 			st.markdown(
 				f"""
 				<div class="vt-card vt-subtle">
@@ -1565,8 +1576,8 @@ def render_dashboard_screen() -> None:
 					verdict_condition = "normalized score $< 0.40$"
 				st.markdown(
 					f"""
-					- AI Source value = {format_metric(original_value)} (metric computed on the AI source text)
-					- Writer Rewrite value = {format_metric(edited_value)} (metric computed on the rewrite)
+					- AI Source value = {format_metric(original_value)} (formula: {formula_text})
+					- Writer Rewrite value = {format_metric(edited_value)} (formula: {formula_text})
 					- Delta = {format_metric(delta)} where $\Delta = \text{{Rewrite}} - \text{{AI Source}}$
 					- Verdict condition: {verdict_condition} (current normalized score: {format_metric(normalized_score)})
 					"""
