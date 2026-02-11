@@ -281,3 +281,36 @@ body {
   border-radius: 4px;
   padding: 0 2px;
 }
+
+/* Repair Preview: align the three panel header cards to equal height */
+.vt-repair-panel-headers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+}
+
+/* Streamlit columns render as nested divs; force stretching within our wrapper */
+.vt-repair-panel-headers > div,
+.vt-repair-panel-headers > div > div {
+  height: 100%;
+}
+
+.vt-panel-header {
+  min-height: 92px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .vt-repair-panel-headers {
+    grid-template-columns: 1fr;
+  }
+
+  .vt-panel-header {
+    min-height: 0;
+  }
+}
