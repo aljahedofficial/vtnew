@@ -273,3 +273,11 @@ body {
   font-size: 0.8rem;
   margin-top: 16px;
 }
+
+/* Repair Preview feature spotlight */
+.vt-feature-hit {
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  border-radius: 4px;
+  padding: 0 2px;
+}

@@ -1966,23 +1966,73 @@ def render_dashboard_screen() -> None:
 def render_repair_preview() -> None:
     analysis = st.session_state.analysis
     st.markdown(
-        "<div class='vt-section-title'>Repair Preview</div>", unsafe_allow_html=True
+        "<div class='vt-section-title'>Repair Preview: Negotiating Voice Preservation</div>",
+        unsafe_allow_html=True,
     )
     if not analysis:
         st.info("Run analysis to open repair preview.")
         return
+
+    # --- Determine compromised metrics and navigation state ---
     compromised = [
         metric["label"]
         for metric in METRICS
         if analysis.metric_results[metric["key"]].verdict == "Compromised"
     ]
-    options = compromised or [m["label"] for m in METRICS]
-    metric_focus = st.selectbox("Current Focus", options=options)
-    st.session_state.repair_metric = metric_focus
-    st.markdown(
-        f"<div class='vt-muted'>Negotiating voice alignment for: {metric_focus}</div>",
-        unsafe_allow_html=True,
+    focus_options = compromised or [m["label"] for m in METRICS]
+
+    if "repair_metric_index" not in st.session_state:
+        # Keep legacy focus if it exists.
+        if st.session_state.get("repair_metric") in focus_options:
+            st.session_state.repair_metric_index = focus_options.index(
+                st.session_state.repair_metric
+            )
+        else:
+            st.session_state.repair_metric_index = 0
+
+    st.session_state.repair_metric_index = max(
+        0, min(int(st.session_state.repair_metric_index), len(focus_options) - 1)
     )
+    metric_focus = focus_options[st.session_state.repair_metric_index]
+    st.session_state.repair_metric = metric_focus
+
+    # --- Context header (focus + prev/next) ---
+    header_left, header_mid, header_right = st.columns([2.2, 4.6, 2.2])
+    with header_left:
+        st.markdown(
+            f"<div class='vt-muted'><b>Current focus:</b> {html.escape(metric_focus)}</div>",
+            unsafe_allow_html=True,
+        )
+    with header_mid:
+        st.caption("Use Previous / Next to step through compromised metrics.")
+    with header_right:
+        prev_disabled = st.session_state.repair_metric_index <= 0
+        next_disabled = st.session_state.repair_metric_index >= len(focus_options) - 1
+        prev_col, next_col = st.columns(2)
+        with prev_col:
+            if st.button("Previous", disabled=prev_disabled, use_container_width=True):
+                st.session_state.repair_metric_index -= 1
+                st.rerun()
+        with next_col:
+            if st.button(
+                "Next compromised metric",
+                disabled=next_disabled,
+                use_container_width=True,
+            ):
+                st.session_state.repair_metric_index += 1
+                st.rerun()
+
+    # Allow direct jump (keeps existing ability to change focus)
+    metric_focus = st.selectbox(
+        "Jump to metric",
+        options=focus_options,
+        index=focus_options.index(metric_focus),
+        key="repair_focus_select",
+    )
+    st.session_state.repair_metric = metric_focus
+    st.session_state.repair_metric_index = focus_options.index(metric_focus)
+
+    # --- Scores header (keep existing) ---
     original_score = analysis.metrics_original.get(metric_focus, 0.0)
     edited_score = analysis.metrics_edited.get(metric_focus, 0.0)
     projected_score = _estimate_projected_score(
@@ -1997,7 +2047,9 @@ def render_repair_preview() -> None:
     with score_mid:
         delta_metric = edited_score - original_score
         st.metric(
-            "Writer rewrite score", f"{edited_score:.1f}", delta=f"{delta_metric:+.1f}"
+            "Writer rewrite score",
+            f"{edited_score:.1f}",
+            delta=f"{delta_metric:+.1f}",
         )
     with score_right:
         delta_overall = projected_score - analysis.score
@@ -2007,6 +2059,8 @@ def render_repair_preview() -> None:
             delta=f"{delta_overall:+.1f}",
         )
     st.caption("Projected overall score is an estimate based on component weighting.")
+
+    # --- Similarity snapshot (keep existing) ---
     st.markdown(
         "<div class='vt-section-title'>Similarity Snapshot</div>",
         unsafe_allow_html=True,
@@ -2039,86 +2093,173 @@ def render_repair_preview() -> None:
         st.session_state.ai_text,
         st.session_state.paraphrase_text,
     )
-    st.markdown(
-        "<div class='vt-section-title'>Panel Layout</div>", unsafe_allow_html=True
-    )
-    st.caption(
-        "Use the slider to adjust panel height. The radio selects which panel to view."
-    )
-    panel_height = st.slider(
-        "Panel height",
-        min_value=200,
-        max_value=520,
-        value=300,
-        step=20,
-        key="panel_height",
-    )
-    active_panel = st.radio(
-        "View",
-        options=["AI Source", "Writer Rewrite", "Your Choice"],
-        horizontal=True,
-    )
-    panel_col = st.columns(1)[0]
-    with panel_col:
-        if active_panel == "AI Source":
-            st.markdown(
-                "<div class='vt-card vt-subtle'><div class='vt-card-title'>AI Source</div></div>",
-                unsafe_allow_html=True,
-            )
-            st.text_area(
-                "AI Source",
-                value=st.session_state.ai_text,
-                height=panel_height,
-                disabled=True,
-            )
-        elif active_panel == "Writer Rewrite":
-            st.markdown(
-                "<div class='vt-card vt-subtle'><div class='vt-card-title'>Writer Rewrite</div></div>",
-                unsafe_allow_html=True,
-            )
-            st.text_area(
-                "Writer Rewrite",
-                value=st.session_state.paraphrase_text,
-                height=panel_height,
-                disabled=True,
-            )
-        else:
-            st.markdown(
-                "<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Choice</div></div>",
-                unsafe_allow_html=True,
-            )
-            choice = st.radio(
-                "Negotiated Options",
-                options=["Option A", "Option B", "Option C", "Custom"],
-                horizontal=True,
-            )
-            custom_text = ""
-            if choice == "Custom":
-                custom_text = st.text_area(
-                    "Custom Rewrite", height=max(180, panel_height - 80)
-                )
-            st.button("Apply Selection", use_container_width=True)
-            if choice == "Custom" and custom_text.strip():
-                custom_standards = None
-                if not st.session_state.use_default_standards:
-                    custom_standards = st.session_state.calibration
-                try:
-                    custom_analysis = analyze_multitext(
-                        st.session_state.human_text,
-                        st.session_state.source_text,
-                        st.session_state.ai_text,
-                        custom_text,
-                        custom_standards=custom_standards,
-                    )
-                    delta_custom = custom_analysis.score - analysis.score
-                    st.metric(
-                        "Custom overall score",
-                        f"{custom_analysis.score:.1f}",
-                        delta=f"{delta_custom:+.1f}",
-                    )
-                except ValueError:
-                    st.warning("Custom text is too short to score reliably.")
 
+    # --- Three-panel comparison (requested) ---
+    st.markdown(
+        "<div class='vt-section-title'>Three-Panel Comparison</div>",
+        unsafe_allow_html=True,
+    )
+
+    # Provide stable defaults for negotiated option choice
+    if "repair_choice_mode" not in st.session_state:
+        st.session_state.repair_choice_mode = "Option A (Balanced)"
+    if "repair_custom_text" not in st.session_state:
+        st.session_state.repair_custom_text = ""
+
+    # These are pragmatic placeholders; the app does not yet detect the single flagged sentence.
+    # For now we present the full text and use diff highlighting to approximate changed spans.
+
+    panel_height = st.slider(
+        "Workspace height",
+        min_value=220,
+        max_value=620,
+        value=360,
+        step=20,
+        key="repair_workspace_height",
+    )
+
+    left_col, mid_col, right_col = st.columns([3, 3, 4], gap="large")
+
+    with left_col:
+        st.markdown(
+            "<div class='vt-card vt-subtle'><div class='vt-card-title'>AI Draft (Original)</div><div class='vt-card-caption'>Baseline draft generated by the AI.</div></div>",
+            unsafe_allow_html=True,
+        )
+        st.text_area(
+            "AI draft",
+            value=st.session_state.ai_text,
+            height=panel_height,
+            disabled=True,
+            label_visibility="collapsed",
+        )
+        st.caption(f"Metric score ({metric_focus}): {original_score:.1f}")
+
+    with mid_col:
+        st.markdown(
+            "<div class='vt-card vt-subtle'><div class='vt-card-title'>Your Paraphrase (Potential AI Pattern Carryover)</div><div class='vt-card-caption'>Your rewrite of the AI draft; may still mimic AI style patterns.</div></div>",
+            unsafe_allow_html=True,
+        )
+        st.text_area(
+            "Your paraphrase",
+            value=st.session_state.paraphrase_text,
+            height=panel_height,
+            disabled=True,
+            label_visibility="collapsed",
+        )
+        st.caption(f"Metric score ({metric_focus}): {edited_score:.1f}  (Δ {edited_score - original_score:+.1f})")
+
+    with right_col:
+        st.markdown(
+            "<div class='vt-card vt-subtle'><div class='vt-card-title'>Negotiated Rewrite (Your Choice)</div><div class='vt-card-caption'>Pick an option or write a custom version. The goal is to reduce mimicry while keeping meaning.</div></div>",
+            unsafe_allow_html=True,
+        )
+
+        st.session_state.repair_choice_mode = st.radio(
+            "Negotiated Options",
+            options=[
+                "Option A (Balanced)",
+                "Option B (More human-like)",
+                "Option C (Accept AI draft)",
+                "Custom",
+            ],
+            index=[
+                "Option A (Balanced)",
+                "Option B (More human-like)",
+                "Option C (Accept AI draft)",
+                "Custom",
+            ].index(st.session_state.repair_choice_mode),
+            horizontal=True,
+        )
+
+        # Minimal deterministic options until a proper suggestion engine exists
+        if st.session_state.repair_choice_mode == "Option C (Accept AI draft)":
+            negotiated_text = st.session_state.ai_text
+        elif st.session_state.repair_choice_mode == "Option B (More human-like)":
+            # Start from the paraphrase but encourage shifting away from AI scaffolding.
+            negotiated_text = st.session_state.paraphrase_text
+        elif st.session_state.repair_choice_mode == "Option A (Balanced)":
+            # Start from paraphrase as a pragmatic default.
+            negotiated_text = st.session_state.paraphrase_text
+        else:
+            negotiated_text = st.session_state.repair_custom_text
+
+        if st.session_state.repair_choice_mode == "Custom":
+            st.session_state.repair_custom_text = st.text_area(
+                "Custom negotiated text",
+                value=st.session_state.repair_custom_text,
+                height=max(220, panel_height - 110),
+                help="Scores update as you edit.",
+            )
+            negotiated_text = st.session_state.repair_custom_text
+        else:
+            st.text_area(
+                "Negotiated preview",
+                value=negotiated_text,
+                height=max(220, panel_height - 110),
+                disabled=True,
+                label_visibility="collapsed",
+            )
+
+        apply_col, count_col = st.columns([2, 1])
+        with apply_col:
+            apply_clicked = st.button("Apply Selection", use_container_width=True)
+        with count_col:
+            st.metric("Chars", len(negotiated_text or ""))
+
+        # Store the negotiated text persistently so other actions can use it.
+        if apply_clicked:
+            st.session_state.repair_negotiated_text = negotiated_text
+            st.success("Selection applied to negotiated text.")
+
+        # --- Separate scoring views (requested) ---
+        st.markdown("<div class='vt-card-caption'><b>Score views (separate)</b></div>", unsafe_allow_html=True)
+
+        # View 1: Overall Voice Preservation (AI Source vs Negotiated)
+        custom_standards = None
+        if not st.session_state.use_default_standards:
+            custom_standards = st.session_state.calibration
+
+        negotiated_for_scoring = negotiated_text.strip()
+        if negotiated_for_scoring:
+            try:
+                negotiated_analysis = analyze_multitext(
+                    st.session_state.human_text,
+                    st.session_state.source_text,
+                    st.session_state.ai_text,
+                    negotiated_for_scoring,
+                    custom_standards=custom_standards,
+                )
+                delta_overall_vs_current = negotiated_analysis.score - analysis.score
+                st.metric(
+                    "Overall score (AI Draft vs Negotiated)",
+                    f"{negotiated_analysis.score:.1f}",
+                    delta=f"{delta_overall_vs_current:+.1f}",
+                )
+
+                # View 2: Similarity-only signals (separate, not merged)
+                sim_a, sim_b = st.columns(2)
+                with sim_a:
+                    st.metric(
+                        "AI similarity (cosine)",
+                        f"{getattr(negotiated_analysis, 'ai_similarity_cosine', 0.0) * 100:.1f}%",
+                    )
+                    st.metric(
+                        "AI similarity (n-gram)",
+                        f"{getattr(negotiated_analysis, 'ai_similarity_ngram', 0.0) * 100:.1f}%",
+                    )
+                with sim_b:
+                    st.metric(
+                        "Source similarity (cosine)",
+                        f"{getattr(negotiated_analysis, 'source_similarity_cosine', 0.0) * 100:.1f}%",
+                    )
+                    st.metric(
+                        "Source similarity (n-gram)",
+                        f"{getattr(negotiated_analysis, 'source_similarity_ngram', 0.0) * 100:.1f}%",
+                    )
+            except ValueError:
+                st.warning("Negotiated text is too short to score reliably.")
+
+    # --- Repair Suggestions (keep existing feature) ---
     st.markdown(
         "<div class='vt-section-title'>Repair Suggestions</div>", unsafe_allow_html=True
     )
@@ -2130,19 +2271,89 @@ def render_repair_preview() -> None:
     )
     for suggestion in suggestions:
         st.markdown(f"- {suggestion}")
+
+    # --- Annotation and disciplinary notes (expanded) ---
+    st.markdown(
+        "<div class='vt-section-title'>Annotation Panel</div>",
+        unsafe_allow_html=True,
+    )
     st.markdown(
         """
-		<div class="vt-card vt-subtle">
-		  <div class="vt-card-title">Annotation</div>
-		  <div class="vt-card-caption">AI changed language that affects this metric. Review and negotiate the change.</div>
-		</div>
-		""",
+        <div class="vt-card vt-subtle">
+          <div class="vt-card-title">Neutral explanation</div>
+          <div class="vt-card-caption">This view highlights how paraphrasing can preserve AI scaffolding (connectors, generic openers, assertive hedging removal). Adjust the negotiated rewrite to restore your intended stance.</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<div class='vt-metric-rows'><span>Skip to Next Issue</span> | <span>Accept Rewrite</span> | <span>Restore AI Source</span> | <span>Generate Final Text</span></div>",
+        """
+        <div class="vt-card vt-subtle">
+          <div class="vt-card-title">Disciplinary note</div>
+          <div class="vt-card-caption">In humanities, hedging and interpretive framing are often expected. In hard sciences, tighter claims and clearer certainty markers may be preferred. Tune Option B / Custom accordingly.</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
+
+    st.text_area(
+        "Your notes",
+        placeholder="Optional: record why you chose a negotiated version (useful for documentation export).",
+        height=110,
+        key="repair_notes",
+    )
+
+    # --- Navigation Actions (requested names) ---
+    st.markdown(
+        "<div class='vt-section-title'>Navigation Actions</div>", unsafe_allow_html=True
+    )
+    action_left, action_mid1, action_mid2, action_right = st.columns(4)
+    with action_left:
+        if st.button("Skip to Next Issue", use_container_width=True):
+            if st.session_state.repair_metric_index < len(focus_options) - 1:
+                st.session_state.repair_metric_index += 1
+                st.rerun()
+
+    with action_mid1:
+        # Warning-confirm flow
+        accept_all = st.button("Accept All AI Edits", use_container_width=True)
+        if accept_all:
+            st.session_state.repair_accept_all_confirm = True
+        if st.session_state.get("repair_accept_all_confirm"):
+            st.warning(
+                "Accepting the AI draft may increase AI similarity. Confirm to proceed.",
+            )
+            confirm_col, cancel_col = st.columns(2)
+            with confirm_col:
+                if st.button("Confirm accept AI draft", use_container_width=True):
+                    st.session_state.repair_negotiated_text = st.session_state.ai_text
+                    st.session_state.repair_accept_all_confirm = False
+                    st.success("Negotiated text set to AI draft.")
+            with cancel_col:
+                if st.button("Cancel", use_container_width=True):
+                    st.session_state.repair_accept_all_confirm = False
+
+    with action_mid2:
+        if st.button("Restore All Original", use_container_width=True):
+            # In this workflow, 'original' is the AI draft (Panel 1)
+            st.session_state.repair_negotiated_text = st.session_state.ai_text
+            st.info("Restored negotiated text to the AI draft.")
+
+    with action_right:
+        if st.button("Generate Final Text", use_container_width=True):
+            final_text = st.session_state.get("repair_negotiated_text") or negotiated_text
+            st.session_state.final_text = final_text
+            st.success("Final text generated (see below).")
+
+    if st.session_state.get("final_text"):
+        st.markdown(
+            "<div class='vt-section-title'>Final Text</div>", unsafe_allow_html=True
+        )
+        st.text_area(
+            "Final text",
+            value=st.session_state.final_text,
+            height=260,
+        )
 
 
 def render_calibration(local_storage: LocalStorage | None) -> None:
