@@ -43,6 +43,7 @@ from app.state import (
 	HUMAN_TEXT_KEY,
 	PARAPHRASE_TEXT_KEY,
 	PROMPT_TEXT_KEY,
+	SOURCE_TEXT_KEY,
 )
 
 
@@ -374,6 +375,43 @@ def render_comparison_panel(
 	components.html(html_block, height=frame_height, scrolling=False)
 
 
+def render_ai_ism_panel(
+	title: str,
+	categories: Dict[str, int],
+	metric_results: Dict[str, "MetricResult"] | None,
+	colors: List[str],
+) -> None:
+	st.markdown(f"<div class='vt-muted'>{title}</div>", unsafe_allow_html=True)
+	total = sum(categories.values()) if categories else 0
+	if total == 0:
+		st.info("No AI-isms found.")
+		h_count = 0
+		markers = 0
+		if metric_results:
+			h_metric = metric_results.get("epistemic_hedging")
+			discourse_metric = metric_results.get("discourse_marker_density")
+			if h_metric:
+				h_count = h_metric.details.get("hedge_count", 0)
+			if discourse_metric:
+				markers = discourse_metric.details.get("total_markers", 0)
+		stats = [
+			("Cliches", categories.get("cliches", 0)),
+			("Connectors", categories.get("connectors", 0)),
+			("Generic openers", categories.get("generic_openers", 0)),
+			("Hedges", h_count),
+			("Transition words", markers),
+		]
+		cols = st.columns(3)
+		for idx, (label, value) in enumerate(stats):
+			cols[idx % 3].metric(label, value)
+		return
+	st.plotly_chart(
+		build_pie_chart(categories, colors=colors),
+		use_container_width=True,
+		config=_plotly_download_config(),
+	)
+
+
 def _estimate_projected_score(
 	analysis: "AnalysisResult",
 	metric_label: str,
@@ -558,6 +596,8 @@ def init_state() -> None:
 		st.session_state.calibration_toggle_prev = "Use default standards"
 	if "defaults_reset_notice" not in st.session_state:
 		st.session_state.defaults_reset_notice = False
+	if "analysis_notice" not in st.session_state:
+		st.session_state.analysis_notice = False
 
 
 def save_human(local_storage: LocalStorage | None) -> None:
@@ -584,6 +624,12 @@ def save_prompt(local_storage: LocalStorage | None) -> None:
 	st.session_state.analysis = None
 
 
+def save_source(local_storage: LocalStorage | None) -> None:
+	if local_storage:
+		local_storage.setItem(SOURCE_TEXT_KEY, st.session_state.source_text)
+	st.session_state.analysis = None
+
+
 def clear_human(local_storage: LocalStorage | None) -> None:
 	st.session_state.human_text = ""
 	if local_storage:
@@ -591,9 +637,12 @@ def clear_human(local_storage: LocalStorage | None) -> None:
 	st.session_state.analysis = None
 
 
-def clear_source() -> None:
+
+def clear_source(local_storage: LocalStorage | None) -> None:
 	st.session_state.source_text = ""
 	st.session_state.source_file_name = None
+	if local_storage:
+		local_storage.deleteItem(SOURCE_TEXT_KEY)
 	st.session_state.analysis = None
 
 
@@ -609,6 +658,29 @@ def clear_paraphrase(local_storage: LocalStorage | None) -> None:
 	if local_storage:
 		local_storage.deleteItem(PARAPHRASE_TEXT_KEY)
 	st.session_state.analysis = None
+
+
+def auto_load_text(
+	local_storage: LocalStorage | None,
+	storage_key: str,
+	state_key: str,
+	label: str,
+	file_name_key: str | None = None,
+) -> None:
+	if not local_storage:
+		st.info("Autosave is unavailable because streamlit-local-storage is missing.")
+		return
+	stored = local_storage.getItem(storage_key)
+	if not stored:
+		st.info(f"No saved {label} text found.")
+		return
+	if not isinstance(stored, str):
+		stored = str(stored)
+	st.session_state[state_key] = stored
+	if file_name_key:
+		st.session_state[file_name_key] = None
+	st.session_state.analysis = None
+	st.success(f"Auto loaded saved {label} text.")
 
 
 def _coerce_calibration(data: object) -> Dict[str, Dict[str, float]] | None:
@@ -676,6 +748,11 @@ def run_analysis() -> None:
 		paraphrase_text,
 		custom_standards=custom_standards,
 	)
+
+
+def run_analysis_with_notice() -> None:
+	run_analysis()
+	st.session_state.analysis_notice = True
 
 
 def render_header() -> None:
@@ -843,7 +920,12 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		human_wc = word_count(st.session_state.human_text)
 		st.caption(f"Word count: {human_wc}")
 		word_count_notice("Human baseline", human_wc)
-		st.button("Clear Section 1", on_click=lambda: clear_human(local_storage), use_container_width=True)
+		human_actions_left, human_actions_right = st.columns(2)
+		with human_actions_left:
+			if st.button("Auto Load", key="auto_load_human", use_container_width=True):
+				auto_load_text(local_storage, HUMAN_TEXT_KEY, "human_text", "human baseline", "human_file_name")
+		with human_actions_right:
+			st.button("Clear Section 1", on_click=lambda: clear_human(local_storage), use_container_width=True)
 
 	with section_top_right:
 		st.markdown("<div class='vt-card-title'>Section 2: Source Material (Upload Only)</div>", unsafe_allow_html=True)
@@ -856,6 +938,7 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 			try:
 				st.session_state.source_text = read_uploaded_text(upload_source)
 				st.session_state.source_file_name = upload_source.name
+				save_source(local_storage)
 				st.success(f"Loaded {upload_source.name}")
 			except RuntimeError as exc:
 				st.error(str(exc))
@@ -870,7 +953,12 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		source_wc = word_count(st.session_state.source_text)
 		if source_wc:
 			st.caption(f"Word count: {source_wc}")
-		st.button("Clear Section 2", on_click=clear_source, use_container_width=True)
+		source_actions_left, source_actions_right = st.columns(2)
+		with source_actions_left:
+			if st.button("Auto Load", key="auto_load_source", use_container_width=True):
+				auto_load_text(local_storage, SOURCE_TEXT_KEY, "source_text", "source material", "source_file_name")
+		with source_actions_right:
+			st.button("Clear Section 2", on_click=lambda: clear_source(local_storage), use_container_width=True)
 
 	section_bottom_left, section_bottom_right = st.columns(2, gap="large")
 
@@ -910,7 +998,12 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		ai_wc = word_count(st.session_state.ai_text)
 		st.caption(f"Word count: {ai_wc}")
 		word_count_notice("AI draft", ai_wc)
-		st.button("Clear Section 3", on_click=lambda: clear_ai(local_storage), use_container_width=True)
+		ai_actions_left, ai_actions_right = st.columns(2)
+		with ai_actions_left:
+			if st.button("Auto Load", key="auto_load_ai", use_container_width=True):
+				auto_load_text(local_storage, AI_TEXT_KEY, "ai_text", "AI draft", "ai_file_name")
+		with ai_actions_right:
+			st.button("Clear Section 3", on_click=lambda: clear_ai(local_storage), use_container_width=True)
 
 	with section_bottom_right:
 		st.markdown("<div class='vt-card-title'>Section 4: Writer Paraphrase (Your Rewrite)</div>", unsafe_allow_html=True)
@@ -940,7 +1033,12 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 		paraphrase_wc = word_count(st.session_state.paraphrase_text)
 		st.caption(f"Word count: {paraphrase_wc}")
 		word_count_notice("Paraphrase", paraphrase_wc)
-		st.button("Clear Section 4", on_click=lambda: clear_paraphrase(local_storage), use_container_width=True)
+		paraphrase_actions_left, paraphrase_actions_right = st.columns(2)
+		with paraphrase_actions_left:
+			if st.button("Auto Load", key="auto_load_paraphrase", use_container_width=True):
+				auto_load_text(local_storage, PARAPHRASE_TEXT_KEY, "paraphrase_text", "paraphrase", "paraphrase_file_name")
+		with paraphrase_actions_right:
+			st.button("Clear Section 4", on_click=lambda: clear_paraphrase(local_storage), use_container_width=True)
 
 	all_present = (
 		bool(st.session_state.human_text.strip())
@@ -954,9 +1052,12 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 	st.button(
 		"Run Analysis",
 		disabled=not all_present,
-		on_click=run_analysis if all_present else None,
+		on_click=run_analysis_with_notice if all_present else None,
 		use_container_width=True,
 	)
+	if st.session_state.analysis_notice:
+		st.success("Analysis Complete. Go to next step.")
+		st.session_state.analysis_notice = False
 
 	st.markdown(
 		"<div class='vt-footer'>Version 0.9.2 | Thesis Citation | Privacy</div>",
@@ -1129,24 +1230,18 @@ def render_dashboard_screen() -> None:
 		original_ai_ism = getattr(analysis, "ai_ism_categories_original", analysis.ai_ism_categories)
 		pie_left, pie_right = st.columns(2)
 		with pie_left:
-			st.markdown("<div class='vt-muted'>AI Source</div>", unsafe_allow_html=True)
-			st.plotly_chart(
-				build_pie_chart(
-					original_ai_ism,
-					colors=["#16a34a", "#22c55e", "#4ade80", "#86efac", "#bbf7d0"],
-				),
-				use_container_width=True,
-				config=_plotly_download_config(),
+			render_ai_ism_panel(
+				"AI Source",
+				original_ai_ism,
+				getattr(analysis, "metric_results_original", None),
+				colors=["#16a34a", "#22c55e", "#4ade80", "#86efac", "#bbf7d0"],
 			)
 		with pie_right:
-			st.markdown("<div class='vt-muted'>Writer Rewrite</div>", unsafe_allow_html=True)
-			st.plotly_chart(
-				build_pie_chart(
-					analysis.ai_ism_categories,
-					colors=["#ef4444", "#f97316", "#f59e0b", "#facc15", "#fb7185"],
-				),
-				use_container_width=True,
-				config=_plotly_download_config(),
+			render_ai_ism_panel(
+				"Writer Rewrite",
+				analysis.ai_ism_categories,
+				analysis.metric_results,
+				colors=["#ef4444", "#f97316", "#f59e0b", "#facc15", "#fb7185"],
 			)
 		with st.expander("AI-isms Detected in Writer Rewrite"):
 			if analysis.ai_ism_phrases:
@@ -1400,8 +1495,11 @@ stored_human = local_storage.getItem(HUMAN_TEXT_KEY) if local_storage else ""
 stored_ai = local_storage.getItem(AI_TEXT_KEY) if local_storage else ""
 stored_paraphrase = local_storage.getItem(PARAPHRASE_TEXT_KEY) if local_storage else ""
 stored_prompt = local_storage.getItem(PROMPT_TEXT_KEY) if local_storage else ""
+stored_source = local_storage.getItem(SOURCE_TEXT_KEY) if local_storage else ""
 if not st.session_state.human_text:
 	st.session_state.human_text = stored_human or ""
+if not st.session_state.source_text:
+	st.session_state.source_text = stored_source or ""
 if not st.session_state.ai_text:
 	st.session_state.ai_text = stored_ai or ""
 if not st.session_state.paraphrase_text:

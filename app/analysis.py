@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 import re
 from typing import Dict, List, Optional, Tuple
@@ -61,6 +61,7 @@ class AnalysisResult:
     edited_word_count: int
     original_sentence_count: int
     edited_sentence_count: int
+    metric_results_original: Dict[str, MetricResult] = field(default_factory=dict)
 
 
 class CalibrationStandards:
@@ -1049,6 +1050,7 @@ def analyze_texts(
         components=components,
         metric_standards=metric_standards,
         metric_results=edited_metric_results,
+        metric_results_original=original_metric_results,
         consistency_score=result["consistency_score"],
         word_delta=edited_stats["word_count"] - original_stats["word_count"],
         sentence_delta=edited_stats["sentence_count"] - original_stats["sentence_count"],
