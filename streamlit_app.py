@@ -602,6 +602,15 @@ def init_state() -> None:
 		st.session_state.auto_load_notice = ""
 	if "auto_load_notice_kind" not in st.session_state:
 		st.session_state.auto_load_notice_kind = "info"
+	if "storage_op_index" not in st.session_state:
+		st.session_state.storage_op_index = 0
+
+
+def _next_storage_key(prefix: str) -> str:
+	if "storage_op_index" not in st.session_state:
+		st.session_state.storage_op_index = 0
+	st.session_state.storage_op_index += 1
+	return f"{prefix}_{st.session_state.storage_op_index}"
 
 
 def save_human(local_storage: LocalStorage | None) -> None:
@@ -637,7 +646,7 @@ def save_source(local_storage: LocalStorage | None) -> None:
 def clear_human(local_storage: LocalStorage | None) -> None:
 	st.session_state.human_text = ""
 	if local_storage:
-		local_storage.deleteItem(HUMAN_TEXT_KEY)
+		local_storage.deleteItem(HUMAN_TEXT_KEY, key=_next_storage_key("delete_human"))
 	st.session_state.analysis = None
 
 
@@ -646,21 +655,21 @@ def clear_source(local_storage: LocalStorage | None) -> None:
 	st.session_state.source_text = ""
 	st.session_state.source_file_name = None
 	if local_storage:
-		local_storage.deleteItem(SOURCE_TEXT_KEY)
+		local_storage.deleteItem(SOURCE_TEXT_KEY, key=_next_storage_key("delete_source"))
 	st.session_state.analysis = None
 
 
 def clear_ai(local_storage: LocalStorage | None) -> None:
 	st.session_state.ai_text = ""
 	if local_storage:
-		local_storage.deleteItem(AI_TEXT_KEY)
+		local_storage.deleteItem(AI_TEXT_KEY, key=_next_storage_key("delete_ai"))
 	st.session_state.analysis = None
 
 
 def clear_paraphrase(local_storage: LocalStorage | None) -> None:
 	st.session_state.paraphrase_text = ""
 	if local_storage:
-		local_storage.deleteItem(PARAPHRASE_TEXT_KEY)
+		local_storage.deleteItem(PARAPHRASE_TEXT_KEY, key=_next_storage_key("delete_paraphrase"))
 	st.session_state.analysis = None
 
 
@@ -832,7 +841,10 @@ def render_upload_screen(local_storage: LocalStorage | None) -> None:
 				st.session_state[f"inline_ai_{key}"] = defaults["ai"]
 			if local_storage:
 				try:
-					local_storage.deleteItem(CALIBRATION_KEY)
+					local_storage.deleteItem(
+						CALIBRATION_KEY,
+						key=_next_storage_key("delete_calibration"),
+					)
 				except KeyError:
 					pass
 			if st.session_state.defaults_reset_notice:
