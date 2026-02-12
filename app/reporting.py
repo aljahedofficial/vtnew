@@ -8,7 +8,7 @@ from typing import Dict, List, Any, Optional
 
 try:
     from docx import Document
-    from docx.shared import Inches, Pt
+    from docx.shared import Inches, Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 except ImportError:
     Document = None
@@ -59,54 +59,116 @@ class ReportGenerator:
         # Executive Summary
         if "Executive Summary" in sections_to_include:
             doc.add_heading("Executive Summary", level=1)
-            doc.add_paragraph(f"Overall Voice Preservation Score: {analysis.score:.1f}/100")
+            doc.add_paragraph(f"Overall Voice Preservation Score: {analysis.score:.2f}/100")
             doc.add_paragraph(f"Classification: {analysis.classification}")
             doc.add_paragraph(f"Consistency Score: {analysis.consistency_score:.2f}")
+
+        # Data Only Section (Requested detailed data)
+        # Note: We'll include this if "Executive Summary" or "Full Metric Analysis" is checked, 
+        # as it contains the raw data points.
+        doc.add_heading("Detailed Analysis Data", level=1)
+        
+        # Component Breakdown Table
+        doc.add_heading("Component Breakdown", level=2)
+        comp_table = doc.add_table(rows=1, cols=2)
+        comp_table.style = 'Table Grid'
+        comp_table.rows[0].cells[0].text = "Component"
+        comp_table.rows[0].cells[1].text = "Score"
+        
+        components = [
+            ("Authenticity Markers", analysis.components.get("Authenticity", 0.0)),
+            ("Lexical Identity", analysis.components.get("Lexical", 0.0)),
+            ("Structural Identity", analysis.components.get("Structural", 0.0)),
+            ("Stylistic Identity", analysis.components.get("Stylistic", 0.0)),
+            ("Voice Consistency", analysis.consistency_score),
+        ]
+        for name, val in components:
+            row = comp_table.add_row().cells
+            row[0].text = name
+            row[1].text = f"{val:.2f}"
+
+        # Quick Stats Table
+        doc.add_heading("Quick Stats", level=2)
+        stats_table = doc.add_table(rows=1, cols=2)
+        stats_table.style = 'Table Grid'
+        stats_table.rows[0].cells[0].text = "Metric"
+        stats_table.rows[0].cells[1].text = "Value"
+        
+        stats = [
+            ("Word Delta", str(analysis.word_delta)),
+            ("Sentence Delta", str(analysis.sentence_delta)),
+            ("AI-isms Total", str(analysis.ai_ism_total)),
+            ("Original Word Count", str(analysis.original_word_count)),
+            ("Rewrite Word Count", str(analysis.edited_word_count)),
+            ("Original Sentence Count", str(analysis.original_sentence_count)),
+            ("Rewrite Sentence Count", str(analysis.edited_sentence_count)),
+        ]
+        for name, val in stats:
+            row = stats_table.add_row().cells
+            row[0].text = name
+            row[1].text = val
+
+        # Similarity Index
+        doc.add_heading("Similarity Index", level=2)
+        sim_table = doc.add_table(rows=1, cols=2)
+        sim_table.style = 'Table Grid'
+        sim_table.rows[0].cells[0].text = "Metric"
+        sim_table.rows[0].cells[1].text = "Score"
+        
+        sims = [
+            ("Source vs Rewrite (Cosine)", f"{analysis.source_similarity_cosine * 100:.1f}%"),
+            ("Source vs Rewrite (N-gram)", f"{analysis.source_similarity_ngram * 100:.1f}%"),
+            ("AI vs Rewrite (Cosine)", f"{analysis.ai_similarity_cosine * 100:.1f}%"),
+            ("AI vs Rewrite (N-gram)", f"{analysis.ai_similarity_ngram * 100:.1f}%"),
+        ]
+        for name, val in sims:
+            row = sim_table.add_row().cells
+            row[0].text = name
+            row[1].text = val
 
         # Visualizations
         if "Visualizations" in sections_to_include and images:
             doc.add_heading("Visualizations", level=1)
-            for name, img_bytes in images.items():
-                doc.add_heading(name, level=2)
-                img_stream = BytesIO(img_bytes)
-                doc.add_picture(img_stream, width=Inches(6))
+            # Order them logically
+            order = ["Voice Identity Spectrum", "Sentence Length Variation", "Metric Standards", "AI Source AI-isms", "Writer Rewrite AI-isms"]
+            for name in order:
+                if name in images:
+                    doc.add_heading(name, level=2)
+                    img_stream = BytesIO(images[name])
+                    doc.add_picture(img_stream, width=Inches(5.5))
 
         # Full Metric Analysis
         if "Full Metric Analysis" in sections_to_include:
-            doc.add_heading("Detailed Metric Analysis", level=1)
+            doc.add_heading("Full Metric Deep-Dive", level=1)
             table = doc.add_table(rows=1, cols=4)
             table.style = 'Table Grid'
             hdr_cells = table.rows[0].cells
             hdr_cells[0].text = 'Metric'
-            hdr_cells[1].text = 'Raw Value'
-            hdr_cells[2].text = 'Score'
+            hdr_cells[1].text = 'AI Source'
+            hdr_cells[2].text = 'Rewrite'
             hdr_cells[3].text = 'Verdict'
 
-            for key, result in analysis.metric_results.items():
+            # Define metrics to show
+            for label, original_val in analysis.metrics_original.items():
+                edited_val = analysis.metrics_edited.get(label, 0.0)
+                # Find verdict
+                verdict = "N/A"
+                for res in analysis.metric_results.values():
+                    if res.name == label:
+                        verdict = res.verdict
+                        break
+                
                 row_cells = table.add_row().cells
-                row_cells[0].text = result.name
-                row_cells[1].text = f"{result.raw_value:.4f}"
-                row_cells[2].text = f"{result.normalized_score:.4f}"
-                row_cells[3].text = result.verdict
+                row_cells[0].text = label
+                row_cells[1].text = f"{original_val:.4f}"
+                row_cells[2].text = f"{edited_val:.4f}"
+                row_cells[3].text = verdict
 
         # Repair Preview Decisions
         if "Repair Preview Decisions" in sections_to_include and negotiated_text:
             doc.add_heading("Repair Preview Decisions", level=1)
             doc.add_heading("Final Negotiated Rewrite", level=2)
             doc.add_paragraph(negotiated_text)
-
-        # Comparison
-        if "AI Source vs Writer Rewrite Comparison" in sections_to_include:
-            doc.add_heading("Comparison Statistics", level=1)
-            doc.add_paragraph(f"Original Word Count: {analysis.original_word_count}")
-            doc.add_paragraph(f"Edited Word Count: {analysis.edited_word_count}")
-            doc.add_paragraph(f"Word Delta: {analysis.word_delta:+d}")
-            
-            doc.add_heading("Similarity Scores", level=2)
-            doc.add_paragraph(f"AI vs Rewrite (Cosine): {analysis.ai_similarity_cosine:.4f}")
-            doc.add_paragraph(f"AI vs Rewrite (N-gram): {analysis.ai_similarity_ngram:.4f}")
-            doc.add_paragraph(f"Source vs Rewrite (Cosine): {analysis.source_similarity_cosine:.4f}")
-            doc.add_paragraph(f"Source vs Rewrite (N-gram): {analysis.source_similarity_ngram:.4f}")
 
         # Authorship Statement
         if "Authorship Documentation Statement" in sections_to_include:
@@ -129,8 +191,6 @@ class ReportGenerator:
     ) -> bytes:
         """Generate a PDF document report using fpdf2."""
         if not FPDF:
-            # If FPDF is not available, we can't generate a PDF.
-            # But on Streamlit Cloud, it should be installed via requirements.txt.
             return b"Error: fpdf2 not installed."
 
         pdf = FPDF()
@@ -151,45 +211,120 @@ class ReportGenerator:
             pdf.set_font("Helvetica", "B", 16)
             pdf.cell(0, 10, "Executive Summary", 0, 1)
             pdf.set_font("Helvetica", "", 12)
-            pdf.cell(0, 10, f"Overall Voice Preservation Score: {analysis.score:.1f}/100", 0, 1)
+            pdf.cell(0, 10, f"Overall Voice Preservation Score: {analysis.score:.2f}/100", 0, 1)
             pdf.cell(0, 10, f"Classification: {analysis.classification}", 0, 1)
             pdf.cell(0, 10, f"Consistency Score: {analysis.consistency_score:.2f}", 0, 1)
             pdf.ln(5)
+
+        # Data Only Sections
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, "Detailed Analysis Data", 0, 1)
+        pdf.ln(2)
+
+        # Component Breakdown
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 10, "Component Breakdown", 0, 1)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(100, 10, "Component", 1)
+        pdf.cell(40, 10, "Score", 1)
+        pdf.ln()
+        pdf.set_font("Helvetica", "", 10)
+        components = [
+            ("Authenticity Markers", analysis.components.get("Authenticity", 0.0)),
+            ("Lexical Identity", analysis.components.get("Lexical", 0.0)),
+            ("Structural Identity", analysis.components.get("Structural", 0.0)),
+            ("Stylistic Identity", analysis.components.get("Stylistic", 0.0)),
+            ("Voice Consistency", analysis.consistency_score),
+        ]
+        for name, val in components:
+            pdf.cell(100, 10, name, 1)
+            pdf.cell(40, 10, f"{val:.2f}", 1)
+            pdf.ln()
+        pdf.ln(5)
+
+        # Quick Stats
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 10, "Quick Stats", 0, 1)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(100, 10, "Metric", 1)
+        pdf.cell(40, 10, "Value", 1)
+        pdf.ln()
+        pdf.set_font("Helvetica", "", 10)
+        stats = [
+            ("Word Delta", str(analysis.word_delta)),
+            ("Sentence Delta", str(analysis.sentence_delta)),
+            ("AI-isms Total", str(analysis.ai_ism_total)),
+            ("Original Word Count", str(analysis.original_word_count)),
+            ("Rewrite Word Count", str(analysis.edited_word_count)),
+            ("Original Sentence Count", str(analysis.original_sentence_count)),
+            ("Rewrite Sentence Count", str(analysis.edited_sentence_count)),
+        ]
+        for name, val in stats:
+            pdf.cell(100, 10, name, 1)
+            pdf.cell(40, 10, val, 1)
+            pdf.ln()
+        pdf.ln(5)
+
+        # Similarity Index
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 10, "Similarity Index", 0, 1)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(100, 10, "Metric", 1)
+        pdf.cell(40, 10, "Score", 1)
+        pdf.ln()
+        pdf.set_font("Helvetica", "", 10)
+        sims = [
+            ("Source vs Rewrite (Cosine)", f"{analysis.source_similarity_cosine * 100:.1f}%"),
+            ("Source vs Rewrite (N-gram)", f"{analysis.source_similarity_ngram * 100:.1f}%"),
+            ("AI vs Rewrite (Cosine)", f"{analysis.ai_similarity_cosine * 100:.1f}%"),
+            ("AI vs Rewrite (N-gram)", f"{analysis.ai_similarity_ngram * 100:.1f}%"),
+        ]
+        for name, val in sims:
+            pdf.cell(100, 10, name, 1)
+            pdf.cell(40, 10, val, 1)
+            pdf.ln()
+        pdf.ln(5)
 
         # Visualizations
         if "Visualizations" in sections_to_include and images:
             pdf.set_font("Helvetica", "B", 16)
             pdf.cell(0, 10, "Visualizations", 0, 1)
-            for name, img_bytes in images.items():
-                pdf.set_font("Helvetica", "B", 12)
-                pdf.cell(0, 10, name, 0, 1)
-                img_stream = BytesIO(img_bytes)
-                # FPDF can't take BytesIO directly in all versions, let's use a temporary name or check
-                # For fpdf2, it can handle some stream-like objects or we can save it to a tmp file.
-                # Actually, fpdf2 can handle io.BytesIO if we pass it as 'name'
-                pdf.image(img_stream, x=10, w=190) 
-                pdf.ln(5)
+            order = ["Voice Identity Spectrum", "Sentence Length Variation", "Metric Standards", "AI Source AI-isms", "Writer Rewrite AI-isms"]
+            for name in order:
+                if name in images:
+                    pdf.set_font("Helvetica", "B", 12)
+                    pdf.cell(0, 10, name, 0, 1)
+                    img_stream = BytesIO(images[name])
+                    pdf.image(img_stream, x=10, w=180) 
+                    pdf.ln(5)
 
         # Full Metric Analysis
         if "Full Metric Analysis" in sections_to_include:
             pdf.set_font("Helvetica", "B", 16)
-            pdf.cell(0, 10, "Detailed Metric Analysis", 0, 1)
+            pdf.cell(0, 10, "Detailed Metric Deep-Dive", 0, 1)
             
             # Table Header
             pdf.set_font("Helvetica", "B", 10)
-            col_widths = [60, 40, 40, 40]
-            headers = ["Metric", "Raw Value", "Score", "Verdict"]
+            col_widths = [60, 30, 30, 40]
+            headers = ["Metric", "AI Source", "Rewrite", "Verdict"]
             for i in range(len(headers)):
                 pdf.cell(col_widths[i], 10, headers[i], 1)
             pdf.ln()
 
             # Table Rows
             pdf.set_font("Helvetica", "", 10)
-            for key, result in analysis.metric_results.items():
-                pdf.cell(col_widths[0], 10, result.name, 1)
-                pdf.cell(col_widths[1], 10, f"{result.raw_value:.3f}", 1)
-                pdf.cell(col_widths[2], 10, f"{result.normalized_score:.3f}", 1)
-                pdf.cell(col_widths[3], 10, result.verdict, 1)
+            for label, original_val in analysis.metrics_original.items():
+                edited_val = analysis.metrics_edited.get(label, 0.0)
+                verdict = "N/A"
+                for res in analysis.metric_results.values():
+                    if res.name == label:
+                        verdict = res.verdict
+                        break
+                
+                pdf.cell(col_widths[0], 10, label, 1)
+                pdf.cell(col_widths[1], 10, f"{original_val:.3f}", 1)
+                pdf.cell(col_widths[2], 10, f"{edited_val:.3f}", 1)
+                pdf.cell(col_widths[3], 10, verdict, 1)
                 pdf.ln()
             pdf.ln(5)
 
@@ -201,24 +336,6 @@ class ReportGenerator:
             pdf.cell(0, 10, "Final Negotiated Rewrite:", 0, 1)
             pdf.set_font("Helvetica", "", 10)
             pdf.multi_cell(0, 10, negotiated_text)
-            pdf.ln(5)
-
-        # Comparison
-        if "AI Source vs Writer Rewrite Comparison" in sections_to_include:
-            pdf.set_font("Helvetica", "B", 16)
-            pdf.cell(0, 10, "Comparison Statistics", 0, 1)
-            pdf.set_font("Helvetica", "", 12)
-            pdf.cell(0, 10, f"Original Word Count: {analysis.original_word_count}", 0, 1)
-            pdf.cell(0, 10, f"Edited Word Count: {analysis.edited_word_count}", 0, 1)
-            pdf.cell(0, 10, f"Word Delta: {analysis.word_delta:+d}", 0, 1)
-            pdf.ln(2)
-            pdf.set_font("Helvetica", "B", 12)
-            pdf.cell(0, 10, "Similarity Scores:", 0, 1)
-            pdf.set_font("Helvetica", "", 10)
-            pdf.cell(0, 10, f"AI vs Rewrite (Cosine): {analysis.ai_similarity_cosine:.4f}", 0, 1)
-            pdf.cell(0, 10, f"AI vs Rewrite (N-gram): {analysis.ai_similarity_ngram:.4f}", 0, 1)
-            pdf.cell(0, 10, f"Source vs Rewrite (Cosine): {analysis.source_similarity_cosine:.4f}", 0, 1)
-            pdf.cell(0, 10, f"Source vs Rewrite (N-gram): {analysis.source_similarity_ngram:.4f}", 0, 1)
             pdf.ln(5)
 
         # Authorship Statement
@@ -242,7 +359,6 @@ class ReportGenerator:
         
         for name, original in analysis.metrics_original.items():
             edited = analysis.metrics_edited.get(name, 0.0)
-            # Find the result object for name
             verdict_str = "N/A"
             for res in analysis.metric_results.values():
                 if res.name == name:

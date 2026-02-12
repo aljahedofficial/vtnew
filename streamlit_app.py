@@ -2618,19 +2618,33 @@ def render_documentation_export() -> None:
                 if "Visualizations" in sections_to_include:
                     try:
                         # Re-build key charts for the report
-                        from app.charts import build_radar_chart, build_line_chart
+                        from app.charts import build_radar_chart, build_line_chart, build_metric_standards_chart, build_pie_chart
                         
                         radar_fig = build_radar_chart(
                             analysis.metrics_original,
                             analysis.metrics_edited,
                             analysis.metric_standards
                         )
-                        images["Voice Identity Spectrum"] = pio.to_image(radar_fig, format="png", width=800, height=600)
+                        images["Voice Identity Spectrum"] = pio.to_image(radar_fig, format="png", width=1000, height=800)
                         
                         line_fig = build_line_chart(analysis.sentence_lengths)
-                        images["Sentence Length Variation"] = pio.to_image(line_fig, format="png", width=800, height=600)
+                        images["Sentence Length Variation"] = pio.to_image(line_fig, format="png", width=1200, height=600)
+
+                        # NEW: Metric Standards
+                        standards_fig = build_metric_standards_chart(analysis.metric_standards)
+                        images["Metric Standards"] = pio.to_image(standards_fig, format="png", width=1000, height=800)
+
+                        # NEW: AI-ism Category Distributions
+                        original_ai_ism = getattr(analysis, "ai_ism_categories_original", analysis.ai_ism_categories)
+                        
+                        pie_orig_fig = build_pie_chart(original_ai_ism, colors=["#f59e0b", "#0f766e", "#7c3aed"])
+                        images["AI Source AI-isms"] = pio.to_image(pie_orig_fig, format="png", width=800, height=600)
+                        
+                        pie_rewrite_fig = build_pie_chart(analysis.ai_ism_categories, colors=["#dc2626", "#2563eb", "#16a34a"])
+                        images["Writer Rewrite AI-isms"] = pio.to_image(pie_rewrite_fig, format="png", width=800, height=600)
+
                     except Exception as img_err:
-                        st.warning(f"Could not include visualizations: {str(img_err)}")
+                        st.warning(f"Could not include some visualizations: {str(img_err)}")
 
                 if report_type == "JSON":
                     report_bytes = ReportGenerator.generate_json(analysis)
