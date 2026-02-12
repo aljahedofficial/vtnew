@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import difflib
 import html
 import json
@@ -2637,7 +2638,7 @@ def render_documentation_export() -> None:
         except Exception as e:
             st.error(f"Error generating report: {str(e)}")
 
-    if "report_data" in st.session_state:
+    if all(k in st.session_state for k in ["report_data", "report_filename", "report_mime"]):
         st.download_button(
             label="Download",
             data=st.session_state.report_data,
