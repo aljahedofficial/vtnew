@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import plotly.graph_objects as go
+import plotly.io as pio
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -2610,26 +2611,47 @@ def render_documentation_export() -> None:
     if st.button("Generate Report", use_container_width=True):
         try:
             with st.spinner(f"Generating {report_type} report..."):
+                # Prepare data for advanced sections
+                negotiated_text = st.session_state.get("repair_negotiated_text")
+                images = {}
+                
+                if "Visualizations" in sections_to_include:
+                    try:
+                        # Re-build key charts for the report
+                        from app.charts import build_radar_chart, build_line_chart
+                        
+                        radar_fig = build_radar_chart(
+                            analysis.metrics_original,
+                            analysis.metrics_edited,
+                            analysis.metric_standards
+                        )
+                        images["Voice Identity Spectrum"] = pio.to_image(radar_fig, format="png", width=800, height=600)
+                        
+                        line_fig = build_line_chart(analysis.sentence_lengths)
+                        images["Sentence Length Variation"] = pio.to_image(line_fig, format="png", width=800, height=600)
+                    except Exception as img_err:
+                        st.warning(f"Could not include visualizations: {str(img_err)}")
+
                 if report_type == "JSON":
                     report_bytes = ReportGenerator.generate_json(analysis)
                     mime = "application/json"
                     ext = "json"
                 elif report_type == "Word":
-                    report_bytes = ReportGenerator.generate_docx(analysis, sections_to_include, statement)
+                    report_bytes = ReportGenerator.generate_docx(
+                        analysis, sections_to_include, statement, negotiated_text, images
+                    )
                     mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     ext = "docx"
                 elif report_type == "Excel":
-                    # We'll use CSV format for now as requested/implemented
                     report_bytes = ReportGenerator.generate_excel(analysis)
                     mime = "text/csv"
                     ext = "csv"
                 else:  # PDF
-                    # Fallback to Word for now as simple PDF is hard, 
-                    # OR we can just say "PDF coming soon" or use a simple text conversion
-                    report_bytes = ReportGenerator.generate_docx(analysis, sections_to_include, statement)
+                    report_bytes = ReportGenerator.generate_pdf(
+                        analysis, sections_to_include, statement, negotiated_text, images
+                    )
                     mime = "application/pdf"
                     ext = "pdf"
-                    st.info("Note: PDF export currently uses a document layout optimized for Word.")
 
                 st.session_state.report_data = report_bytes
                 st.session_state.report_filename = f"VoiceTracer_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}"

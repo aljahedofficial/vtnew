@@ -4,11 +4,20 @@ import json
 from dataclasses import asdict
 from io import BytesIO
 import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
-from docx import Document
-from docx.shared import Inches, Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+try:
+    from docx import Document
+    from docx.shared import Inches, Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+except ImportError:
+    Document = None
+
+try:
+    from fpdf import FPDF
+except ImportError:
+    FPDF = None
+
 from app.analysis import AnalysisResult, MetricResult
 
 class ReportGenerator:
@@ -27,8 +36,18 @@ class ReportGenerator:
         return json.dumps(data, indent=4).encode("utf-8")
 
     @classmethod
-    def generate_docx(cls, analysis: AnalysisResult, sections_to_include: List[str], statement: str) -> bytes:
+    def generate_docx(
+        cls, 
+        analysis: AnalysisResult, 
+        sections_to_include: List[str], 
+        statement: str,
+        negotiated_text: Optional[str] = None,
+        images: Optional[Dict[str, bytes]] = None
+    ) -> bytes:
         """Generate a Word document report."""
+        if not Document:
+            return b"Error: python-docx not installed."
+            
         doc = Document()
         
         # Header
@@ -40,9 +59,17 @@ class ReportGenerator:
         # Executive Summary
         if "Executive Summary" in sections_to_include:
             doc.add_heading("Executive Summary", level=1)
-            doc.add_paragraph(f"Overall Voice Preservation Score: {analysis.score:.1f}")
+            doc.add_paragraph(f"Overall Voice Preservation Score: {analysis.score:.1f}/100")
             doc.add_paragraph(f"Classification: {analysis.classification}")
             doc.add_paragraph(f"Consistency Score: {analysis.consistency_score:.2f}")
+
+        # Visualizations
+        if "Visualizations" in sections_to_include and images:
+            doc.add_heading("Visualizations", level=1)
+            for name, img_bytes in images.items():
+                doc.add_heading(name, level=2)
+                img_stream = BytesIO(img_bytes)
+                doc.add_picture(img_stream, width=Inches(6))
 
         # Full Metric Analysis
         if "Full Metric Analysis" in sections_to_include:
@@ -61,6 +88,12 @@ class ReportGenerator:
                 row_cells[1].text = f"{result.raw_value:.4f}"
                 row_cells[2].text = f"{result.normalized_score:.4f}"
                 row_cells[3].text = result.verdict
+
+        # Repair Preview Decisions
+        if "Repair Preview Decisions" in sections_to_include and negotiated_text:
+            doc.add_heading("Repair Preview Decisions", level=1)
+            doc.add_heading("Final Negotiated Rewrite", level=2)
+            doc.add_paragraph(negotiated_text)
 
         # Comparison
         if "AI Source vs Writer Rewrite Comparison" in sections_to_include:
@@ -86,9 +119,120 @@ class ReportGenerator:
         return target.getvalue()
 
     @classmethod
+    def generate_pdf(
+        cls, 
+        analysis: AnalysisResult, 
+        sections_to_include: List[str], 
+        statement: str,
+        negotiated_text: Optional[str] = None,
+        images: Optional[Dict[str, bytes]] = None
+    ) -> bytes:
+        """Generate a PDF document report using fpdf2."""
+        if not FPDF:
+            # If FPDF is not available, we can't generate a PDF.
+            # But on Streamlit Cloud, it should be installed via requirements.txt.
+            return b"Error: fpdf2 not installed."
+
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        
+        # Title
+        pdf.set_font("Helvetica", "B", 24)
+        pdf.cell(0, 20, "VoiceTracer Analysis Report", 0, 1, "C")
+        
+        # Date
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.cell(0, 10, f"Generated on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, "R")
+        pdf.ln(10)
+
+        # Executive Summary
+        if "Executive Summary" in sections_to_include:
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "Executive Summary", 0, 1)
+            pdf.set_font("Helvetica", "", 12)
+            pdf.cell(0, 10, f"Overall Voice Preservation Score: {analysis.score:.1f}/100", 0, 1)
+            pdf.cell(0, 10, f"Classification: {analysis.classification}", 0, 1)
+            pdf.cell(0, 10, f"Consistency Score: {analysis.consistency_score:.2f}", 0, 1)
+            pdf.ln(5)
+
+        # Visualizations
+        if "Visualizations" in sections_to_include and images:
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "Visualizations", 0, 1)
+            for name, img_bytes in images.items():
+                pdf.set_font("Helvetica", "B", 12)
+                pdf.cell(0, 10, name, 0, 1)
+                img_stream = BytesIO(img_bytes)
+                # FPDF can't take BytesIO directly in all versions, let's use a temporary name or check
+                # For fpdf2, it can handle some stream-like objects or we can save it to a tmp file.
+                # Actually, fpdf2 can handle io.BytesIO if we pass it as 'name'
+                pdf.image(img_stream, x=10, w=190) 
+                pdf.ln(5)
+
+        # Full Metric Analysis
+        if "Full Metric Analysis" in sections_to_include:
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "Detailed Metric Analysis", 0, 1)
+            
+            # Table Header
+            pdf.set_font("Helvetica", "B", 10)
+            col_widths = [60, 40, 40, 40]
+            headers = ["Metric", "Raw Value", "Score", "Verdict"]
+            for i in range(len(headers)):
+                pdf.cell(col_widths[i], 10, headers[i], 1)
+            pdf.ln()
+
+            # Table Rows
+            pdf.set_font("Helvetica", "", 10)
+            for key, result in analysis.metric_results.items():
+                pdf.cell(col_widths[0], 10, result.name, 1)
+                pdf.cell(col_widths[1], 10, f"{result.raw_value:.3f}", 1)
+                pdf.cell(col_widths[2], 10, f"{result.normalized_score:.3f}", 1)
+                pdf.cell(col_widths[3], 10, result.verdict, 1)
+                pdf.ln()
+            pdf.ln(5)
+
+        # Repair Preview Decisions
+        if "Repair Preview Decisions" in sections_to_include and negotiated_text:
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "Repair Preview Decisions", 0, 1)
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 10, "Final Negotiated Rewrite:", 0, 1)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 10, negotiated_text)
+            pdf.ln(5)
+
+        # Comparison
+        if "AI Source vs Writer Rewrite Comparison" in sections_to_include:
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "Comparison Statistics", 0, 1)
+            pdf.set_font("Helvetica", "", 12)
+            pdf.cell(0, 10, f"Original Word Count: {analysis.original_word_count}", 0, 1)
+            pdf.cell(0, 10, f"Edited Word Count: {analysis.edited_word_count}", 0, 1)
+            pdf.cell(0, 10, f"Word Delta: {analysis.word_delta:+d}", 0, 1)
+            pdf.ln(2)
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 10, "Similarity Scores:", 0, 1)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.cell(0, 10, f"AI vs Rewrite (Cosine): {analysis.ai_similarity_cosine:.4f}", 0, 1)
+            pdf.cell(0, 10, f"AI vs Rewrite (N-gram): {analysis.ai_similarity_ngram:.4f}", 0, 1)
+            pdf.cell(0, 10, f"Source vs Rewrite (Cosine): {analysis.source_similarity_cosine:.4f}", 0, 1)
+            pdf.cell(0, 10, f"Source vs Rewrite (N-gram): {analysis.source_similarity_ngram:.4f}", 0, 1)
+            pdf.ln(5)
+
+        # Authorship Statement
+        if "Authorship Documentation Statement" in sections_to_include:
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, "Authorship Statement", 0, 1)
+            pdf.set_font("Helvetica", "", 10)
+            pdf.multi_cell(0, 8, statement)
+
+        return pdf.output()
+
+    @classmethod
     def generate_excel(cls, analysis: AnalysisResult) -> bytes:
         """Generate a basic CSV/Excel compatible export."""
-        # Since pandas is not in requirements, we'll generate a CSV string
         import csv
         from io import StringIO
         
@@ -98,8 +242,12 @@ class ReportGenerator:
         
         for name, original in analysis.metrics_original.items():
             edited = analysis.metrics_edited.get(name, 0.0)
-            verdict = analysis.metric_results.get(name.lower().replace(" ", "_"), None)
-            verdict_str = verdict.verdict if verdict else "N/A"
+            # Find the result object for name
+            verdict_str = "N/A"
+            for res in analysis.metric_results.values():
+                if res.name == name:
+                    verdict_str = res.verdict
+                    break
             writer.writerow([name, original, edited, edited - original, verdict_str])
             
         return output.getvalue().encode("utf-8")
