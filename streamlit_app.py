@@ -2160,57 +2160,9 @@ function updateMouse(event) {{
         prev_disabled = st.session_state.repair_metric_index <= 0
         next_disabled = st.session_state.repair_metric_index >= len(focus_options) - 1
         button_html = f"""
-<style>
-.button-container {{
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-}}
-.prev-btn {{
-    background: #e5e7eb;
-    color: #374151;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background 0.3s;
-    opacity: {'0.5' if prev_disabled else '1'};
-    pointer-events: {'none' if prev_disabled else 'auto'};
-}}
-.prev-btn:hover:not(:disabled) {{
-    background: #d1d5db;
-}}
-.prev-btn:focus {{
-    outline: 2px solid #3b82f6;
-}}
-.next-btn {{
-    background: white;
-    color: #111827;
-    font-weight: 600;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 10px 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    cursor: pointer;
-    transition: all 0.3s;
-    opacity: {'0.5' if next_disabled else '1'};
-    pointer-events: {'none' if next_disabled else 'auto'};
-}}
-.next-btn:hover:not(:disabled) {{
-    background: #f9fafb;
-    transform: scale(1.02);
-}}
-.next-btn:active {{
-    transform: scale(0.98);
-}}
-.next-btn:focus {{
-    outline: 2px solid #3b82f6;
-}}
-</style>
-<div class="button-container">
-    <button class="prev-btn" onclick="handleClick('previous')" {'disabled' if prev_disabled else ''}>Previous</button>
-    <button class="next-btn" onclick="handleClick('next')" {'disabled' if next_disabled else ''}>Next<br>compromised metric</button>
+<div style="display: flex; gap: 10px; justify-content: flex-end;">
+    <button style="background: #e5e7eb; color: #374151; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; cursor: pointer; transition: background 0.3s; opacity: {'0.5' if prev_disabled else '1'}; pointer-events: {'none' if prev_disabled else 'auto'};" onclick="handleClick('previous')" {'disabled' if prev_disabled else ''}>Previous</button>
+    <button style="background: white; color: #111827; font-weight: 600; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.3s; opacity: {'0.5' if next_disabled else '1'}; pointer-events: {'none' if next_disabled else 'auto'};" onclick="handleClick('next')" {'disabled' if next_disabled else ''}>Next<br>compromised metric</button>
 </div>
 <script>
 function handleClick(action) {{
@@ -2218,7 +2170,8 @@ function handleClick(action) {{
 }}
 </script>
         """
-        action = components.html(button_html, height=60, key="repair_nav_buttons")
+        action = components.html(button_html, height=100)
+
         if action == 'previous':
             st.session_state.repair_metric_index -= 1
             st.rerun()
@@ -2559,8 +2512,7 @@ def render_calibration(local_storage: LocalStorage | None) -> None:
 
 def render_documentation_export() -> None:
     st.markdown(
-        "<div class='vt-section-title'>Documentation Export</div>",
-        unsafe_allow_html=True,
+        "<div class='vt-section-title'>Documentation Export</div>", unsafe_allow_html=True,
     )
     st.selectbox("Report Type", options=["PDF", "Word", "Excel", "JSON"])
     st.markdown(
@@ -2576,8 +2528,7 @@ def render_documentation_export() -> None:
     ]:
         st.checkbox(section, value=True)
     st.markdown(
-        "<div class='vt-section-title'>Authorship Documentation Statement</div>",
-        unsafe_allow_html=True,
+        "<div class='vt-section-title'>Authorship Documentation Statement</div>", unsafe_allow_html=True,
     )
     st.text_area(
         "Statement",
