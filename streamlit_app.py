@@ -2585,8 +2585,9 @@ def render_documentation_export() -> None:
         "Repair Preview Decisions",
         "AI Source vs Writer Rewrite Comparison",
         "Authorship Documentation Statement",
+        "Complete Documentation (A-Z Metric Guide)",
     ]:
-        if st.checkbox(section, value=True, key=f"include_{section.lower().replace(' ', '_')}"):
+        if st.checkbox(section, value=True, key=f"include_{section.lower().replace(' ', '_').replace('(', '').replace(')', '')}"):
             sections_to_include.append(section)
             
     st.markdown(
@@ -2646,13 +2647,15 @@ def render_documentation_export() -> None:
                     except Exception as img_err:
                         st.warning(f"Could not include some visualizations: {str(img_err)}")
 
+                include_doc = "Complete Documentation (A-Z Metric Guide)" in sections_to_include
+
                 if report_type == "JSON":
                     report_bytes = ReportGenerator.generate_json(analysis)
                     mime = "application/json"
                     ext = "json"
                 elif report_type == "Word":
                     report_bytes = ReportGenerator.generate_docx(
-                        analysis, sections_to_include, statement, negotiated_text, images
+                        analysis, sections_to_include, statement, negotiated_text, images, include_doc
                     )
                     mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     ext = "docx"
@@ -2662,7 +2665,7 @@ def render_documentation_export() -> None:
                     ext = "csv"
                 else:  # PDF
                     report_bytes = ReportGenerator.generate_pdf(
-                        analysis, sections_to_include, statement, negotiated_text, images
+                        analysis, sections_to_include, statement, negotiated_text, images, include_doc
                     )
                     mime = "application/pdf"
                     ext = "pdf"

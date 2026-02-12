@@ -42,7 +42,8 @@ class ReportGenerator:
         sections_to_include: List[str], 
         statement: str,
         negotiated_text: Optional[str] = None,
-        images: Optional[Dict[str, bytes]] = None
+        images: Optional[Dict[str, bytes]] = None,
+        include_documentation: bool = False
     ) -> bytes:
         """Generate a Word document report."""
         if not Document:
@@ -63,9 +64,7 @@ class ReportGenerator:
             doc.add_paragraph(f"Classification: {analysis.classification}")
             doc.add_paragraph(f"Consistency Score: {analysis.consistency_score:.2f}")
 
-        # Data Only Section (Requested detailed data)
-        # Note: We'll include this if "Executive Summary" or "Full Metric Analysis" is checked, 
-        # as it contains the raw data points.
+        # Data Only Section
         doc.add_heading("Detailed Analysis Data", level=1)
         
         # Component Breakdown Table
@@ -129,7 +128,6 @@ class ReportGenerator:
         # Visualizations
         if "Visualizations" in sections_to_include and images:
             doc.add_heading("Visualizations", level=1)
-            # Order them logically
             order = ["Voice Identity Spectrum", "Sentence Length Variation", "Metric Standards", "AI Source AI-isms", "Writer Rewrite AI-isms"]
             for name in order:
                 if name in images:
@@ -148,10 +146,8 @@ class ReportGenerator:
             hdr_cells[2].text = 'Rewrite'
             hdr_cells[3].text = 'Verdict'
 
-            # Define metrics to show
             for label, original_val in analysis.metrics_original.items():
                 edited_val = analysis.metrics_edited.get(label, 0.0)
-                # Find verdict
                 verdict = "N/A"
                 for res in analysis.metric_results.values():
                     if res.name == label:
@@ -175,6 +171,11 @@ class ReportGenerator:
             doc.add_heading("Authorship Statement", level=1)
             doc.add_paragraph(statement)
 
+        # Complete Documentation Appendix
+        if include_documentation:
+            doc.add_page_break()
+            cls._append_docx_documentation(doc, analysis)
+
         # Save to Stream
         target = BytesIO()
         doc.save(target)
@@ -187,7 +188,8 @@ class ReportGenerator:
         sections_to_include: List[str], 
         statement: str,
         negotiated_text: Optional[str] = None,
-        images: Optional[Dict[str, bytes]] = None
+        images: Optional[Dict[str, bytes]] = None,
+        include_documentation: bool = False
     ) -> bytes:
         """Generate a PDF document report using fpdf2."""
         if not FPDF:
@@ -345,7 +347,169 @@ class ReportGenerator:
             pdf.set_font("Helvetica", "", 10)
             pdf.multi_cell(0, 8, statement)
 
+        # Documentation Appendix
+        if include_documentation:
+            pdf.add_page()
+            cls._append_pdf_documentation(pdf, analysis)
+
         return bytes(pdf.output())
+
+    @classmethod
+    def _get_metric_data(cls, analysis: AnalysisResult) -> List[Dict[str, Any]]:
+        """Consolidated metric data for documentation."""
+        res_map = {r.name: r for r in analysis.metric_results.values()}
+        
+        m_data = [
+            {
+                "id": "ai_ism_likelihood",
+                "name": "AI-ism Likelihood",
+                "purpose": "Detects formulaic AI-like phrases.",
+                "calc_plain": "Sums weighted AI-typical phrases (e.g., 'moreover') and divides by total word count.",
+                "formula": "$$L = (\\sum (w_i \\cdot c_i) / N) \\cdot 100$$",
+                "example": f"Found {res_map['AI-ism Likelihood'].details.get('total_weighted_count', 0)} weighted points in your rewrite ({analysis.edited_word_count} words).",
+                "human": 3.1,
+                "ai": 78.5,
+                "meaning": "Higher values indicate more generic, AI-style prose."
+            },
+            {
+                "id": "burstiness",
+                "name": "Burstiness",
+                "purpose": "Measures sentence length variation and rhythm.",
+                "calc_plain": "Standard deviation of sentence lengths divided by the mean sentence length.",
+                "formula": "$$B = \\sigma_{len} / \\mu_{len}$$",
+                "example": f"Your sentences varied from {min(res_map['Burstiness'].details.get('sentence_lengths', [0]))} to {max(res_map['Burstiness'].details.get('sentence_lengths', [0]))} words.",
+                "human": 1.23,
+                "ai": 0.78,
+                "meaning": "Higher values show natural human rhythm; lower values are typically robotic."
+            },
+            {
+                "id": "discourse_marker_density",
+                "name": "Discourse Marker Density",
+                "purpose": "Measures use of structural signposting markers.",
+                "calc_plain": "Total transition words (e.g., 'therefore') per 100 words.",
+                "formula": "$$D = (\\sum \\text{Markers} / N) \\cdot 100$$",
+                "example": f"Detected {res_map['Discourse Marker Density'].details.get('total_markers', 0)} markers in your {analysis.edited_word_count}-word rewrite.",
+                "human": 8.0,
+                "ai": 18.0,
+                "meaning": "AI over-uses markers for clarity; human density is usually moderate."
+            },
+            {
+                "id": "epistemic_hedging",
+                "name": "Epistemic Hedging",
+                "purpose": "Measures caution and nuance in claims.",
+                "calc_plain": "Excess hedging markers (weighted against certainty) per 100 words.",
+                "formula": "$$H = (\\max(0, \\text{hedges} - 0.5 \\cdot \\text{certainty}) / N) \\cdot 100$$",
+                "example": f"Your rewrite used cautious phrasing to balance specificity.",
+                "human": 0.09,
+                "ai": 0.04,
+                "meaning": "High hedging reflects organic human nuance."
+            },
+            {
+                "id": "function_word_ratio",
+                "name": "Function Word Ratio",
+                "purpose": "Measures density of grammatical connector words.",
+                "calc_plain": "Total count of function words (DT, IN, PRP) over total words.",
+                "formula": "$$F = \\sum \\text{Function Words} / N$$",
+                "example": f"Found {res_map['Function Word Ratio'].details.get('function_words', 0)} function words in your text.",
+                "human": 0.50,
+                "ai": 0.60,
+                "meaning": "AI tends to use more 'glue' words to maintain formal structure."
+            },
+            {
+                "id": "information_density",
+                "name": "Information Density",
+                "purpose": "Concentration of content substance and specificity.",
+                "calc_plain": "Weighted sum of content word ratio (70%) and proper noun ratio (30%).",
+                "formula": "$$I = 0.7 \\cdot (C/N) + 0.3 \\cdot (P/N)$$",
+                "example": f"Your rewrite contains {res_map['Information Density'].details.get('content_words', 0)} content words and {res_map['Information Density'].details.get('proper_nouns', 0)} proper nouns.",
+                "human": 0.58,
+                "ai": 0.42,
+                "meaning": "Higher values show dense, specific human-authored substance."
+            },
+            {
+                "id": "lexical_diversity",
+                "name": "Lexical Diversity",
+                "purpose": "Vocabulary richness and variety.",
+                "calc_plain": "Unique words divided by total words (TTR) or MTLD algorithm.",
+                "formula": "$$TTR = V / N$$",
+                "example": f"Used {res_map['Lexical Diversity'].details.get('unique_words', 0)} unique words out of {analysis.edited_word_count}.",
+                "human": 0.55,
+                "ai": 0.42,
+                "meaning": "Higher diversity indicates a broader and more natural human vocabulary."
+            },
+            {
+                "id": "syntactic_complexity",
+                "name": "Syntactic Complexity",
+                "purpose": "Measures structural depth and clause use.",
+                "calc_plain": "Weighted sum of subordination ratio (60%) and length factor (40%).",
+                "formula": "$$S = 0.6 \\cdot R_{sub} + 0.4 \\cdot \\min(\\mu_{len}/30, 1)$$",
+                "example": f"Subordination ratio of {res_map['Syntactic Complexity'].details.get('subordination_ratio', 0)} with avg length {analysis.edited_word_count/max(1, analysis.edited_sentence_count):.2f}.",
+                "human": 0.54,
+                "ai": 0.64,
+                "meaning": "AI often over-complicates syntax to sound formal."
+            }
+        ]
+        return sorted(m_data, key=lambda x: x['name'])
+
+    @classmethod
+    def _append_docx_documentation(cls, doc, analysis):
+        doc.add_heading("Complete Metric Documentation", level=1)
+        doc.add_paragraph("Technical breakdown and explanation of the VoiceTracer scoring framework.")
+        
+        metrics = cls._get_metric_data(analysis)
+        for m in metrics:
+            doc.add_heading(m['name'], level=2)
+            doc.add_paragraph(f"Definition/Purpose: ").add_run(m['purpose']).bold = True
+            doc.add_paragraph(f"Plain-Text Calculation: {m['calc_plain']}")
+            doc.add_paragraph(f"Example Calculation: {m['example']}")
+            doc.add_paragraph(f"Formula (LaTeX): {m['formula']}")
+            doc.add_paragraph(f"Current Value Measured: {analysis.metrics_edited.get(m['name'], 0.0):.4f}")
+            doc.add_paragraph(f"Ideal Human Standard: {m['human']} | AI Default: {m['ai']}")
+            p = doc.add_paragraph(f"Interpretation: ")
+            p.add_run(m['meaning']).italic = True
+
+    @classmethod
+    def _append_pdf_documentation(cls, pdf, analysis):
+        pdf.set_font("Helvetica", "B", 18)
+        pdf.cell(0, 15, "Complete Metric Documentation", 0, 1)
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.cell(0, 8, "Technical breakdown of the VoiceTracer scoring framework.", 0, 1)
+        pdf.ln(5)
+
+        metrics = cls._get_metric_data(analysis)
+        for m in metrics:
+            pdf.set_font("Helvetica", "B", 14)
+            pdf.cell(0, 10, m['name'], 0, 1)
+            
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.write(5, "Definition: ")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.write(5, f"{m['purpose']}\n")
+            
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.write(5, "Calculation: ")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.write(5, f"{m['calc_plain']}\n")
+            
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.write(5, "Example: ")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.write(5, f"{m['example']}\n")
+            
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.write(5, "Formula: ")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.write(5, f"{m['formula']}\n")
+            
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.write(5, "Current Value: ")
+            pdf.set_font("Helvetica", "", 10)
+            pdf.write(5, f"{analysis.metrics_edited.get(m['name'], 0.0):.4f} | ")
+            pdf.write(5, f"Human Std: {m['human']} | AI Std: {m['ai']}\n")
+            
+            pdf.set_font("Helvetica", "I", 10)
+            pdf.multi_cell(0, 5, f"Interpretation: {m['meaning']}")
+            pdf.ln(5)
 
     @classmethod
     def generate_excel(cls, analysis: AnalysisResult) -> bytes:
