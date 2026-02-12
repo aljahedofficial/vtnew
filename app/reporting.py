@@ -467,7 +467,7 @@ class ReportGenerator:
             if formula_images and m['id'] in formula_images:
                 doc.add_paragraph(f"Formula: ")
                 img_stream = BytesIO(formula_images[m['id']])
-                doc.add_picture(img_stream, width=Inches(4.0))
+                doc.add_picture(img_stream, width=Inches(5.0))
             else:
                 doc.add_paragraph(f"Formula (LaTeX): {m['formula']}")
 
@@ -510,7 +510,7 @@ class ReportGenerator:
             if formula_images and m['id'] in formula_images:
                 img_stream = BytesIO(formula_images[m['id']])
                 # Center and scale formula image
-                pdf.image(img_stream, x=pdf.w/4, w=pdf.w/2) 
+                pdf.image(img_stream, x=pdf.w*0.125, w=pdf.w*0.75) 
             else:
                 pdf.set_font("Helvetica", "", 10)
                 pdf.write(5, f"{m['formula']}")

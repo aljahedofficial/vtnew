@@ -259,13 +259,13 @@ def render_latex_to_image(latex_str: str) -> bytes:
     fig.add_annotation(
         text=latex_str,
         showarrow=False,
-        font=dict(size=44, color="black"),
+        font=dict(size=120, color="black"),
         xref="paper", yref="paper",
         x=0.5, y=0.5
     )
     fig.update_layout(
-        width=1000,
-        height=280,
+        width=1200,
+        height=400,
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         margin=dict(l=10, r=10, t=10, b=10),
