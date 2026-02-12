@@ -1900,8 +1900,7 @@ def render_dashboard_screen() -> None:
 
     elif section == "Visual Evidence":
         st.markdown(
-            "<div class='vt-section-title'>Visual Evidence</div>",
-            unsafe_allow_html=True,
+            "<div class='vt-section-title'>Visual Evidence</div>", unsafe_allow_html=True,
         )
         st.caption(
             "Sentence rhythm across the text (green: AI source, red: writer rewrite)."
@@ -2219,7 +2218,7 @@ function handleClick(action) {{
 }}
 </script>
         """
-        action = components.html(button_html, height=60)
+        action = components.html(button_html, height=60, key="repair_nav_buttons")
         if action == 'previous':
             st.session_state.repair_metric_index -= 1
             st.rerun()
@@ -2565,8 +2564,7 @@ def render_documentation_export() -> None:
     )
     st.selectbox("Report Type", options=["PDF", "Word", "Excel", "JSON"])
     st.markdown(
-        "<div class='vt-section-title'>Sections to Include</div>",
-        unsafe_allow_html=True,
+        "<div class='vt-section-title'>Sections to Include</div>", unsafe_allow_html=True
     )
     for section in [
         "Executive Summary",
