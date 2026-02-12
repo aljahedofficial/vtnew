@@ -2649,7 +2649,21 @@ def render_documentation_export() -> None:
 
                 include_doc = "Complete Documentation (A-Z Metric Guide)" in sections_to_include
                 
+                samples = None
                 if include_doc:
+                    # Prepare Samples Used details
+                    source_lines = (st.session_state.source_text or "").splitlines()[:5]
+                    source_snippet = "\n".join(source_lines)
+                    if len(source_lines) >= 5:
+                        source_snippet += "\n..."
+                    
+                    samples = {
+                        "Section 1: Human Baseline (Unassisted)": st.session_state.human_text,
+                        "Section 2: Source Material (Upload Only)": f"File: {st.session_state.source_file_name or 'Uploaded File'}\n\nSnippet:\n{source_snippet}",
+                        "Section 3: AI-Generated Draft": st.session_state.ai_text,
+                        "Section 4: Writer Paraphrase (Your Rewrite)": st.session_state.paraphrase_text
+                    }
+
                     try:
                         from app.charts import render_latex_to_image
                         from app.reporting import ReportGenerator
@@ -2668,17 +2682,17 @@ def render_documentation_export() -> None:
                     ext = "json"
                 elif report_type == "Word":
                     report_bytes = ReportGenerator.generate_docx(
-                        analysis, sections_to_include, statement, negotiated_text, images, include_doc
+                        analysis, sections_to_include, statement, negotiated_text, images, include_doc, samples
                     )
                     mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     ext = "docx"
                 elif report_type == "Excel":
-                    report_bytes = ReportGenerator.generate_excel(analysis)
-                    mime = "text/csv"
-                    ext = "csv"
-                else:  # PDF
+                    report_bytes = ReportGenerator.generate_xlsx(analysis)
+                    mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    ext = "xlsx"
+                elif report_type == "PDF":  # PDF
                     report_bytes = ReportGenerator.generate_pdf(
-                        analysis, sections_to_include, statement, negotiated_text, images, include_doc
+                        analysis, sections_to_include, statement, negotiated_text, images, include_doc, samples
                     )
                     mime = "application/pdf"
                     ext = "pdf"

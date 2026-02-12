@@ -41,9 +41,10 @@ class ReportGenerator:
         analysis: AnalysisResult, 
         sections_to_include: List[str], 
         statement: str,
-        negotiated_text: Optional[str] = None,
+        negotiated_text: str = "",
         images: Optional[Dict[str, bytes]] = None,
-        include_documentation: bool = False
+        include_documentation: bool = False,
+        samples: Optional[Dict[str, str]] = None
     ) -> bytes:
         """Generate a Word document report."""
         if not Document:
@@ -174,7 +175,7 @@ class ReportGenerator:
         # Complete Documentation Appendix
         if include_documentation:
             doc.add_page_break()
-            cls._append_docx_documentation(doc, analysis, images.get("formula_images") if images else None)
+            cls._append_docx_documentation(doc, analysis, images.get("formula_images") if images else None, samples)
 
         # Save to Stream
         target = BytesIO()
@@ -187,9 +188,10 @@ class ReportGenerator:
         analysis: AnalysisResult, 
         sections_to_include: List[str], 
         statement: str,
-        negotiated_text: Optional[str] = None,
+        negotiated_text: str = "",
         images: Optional[Dict[str, bytes]] = None,
-        include_documentation: bool = False
+        include_documentation: bool = False,
+        samples: Optional[Dict[str, str]] = None
     ) -> bytes:
         """Generate a PDF document report using fpdf2."""
         if not FPDF:
@@ -350,7 +352,7 @@ class ReportGenerator:
         # Documentation Appendix
         if include_documentation:
             pdf.add_page()
-            cls._append_pdf_documentation(pdf, analysis, images.get("formula_images") if images else None)
+            cls._append_pdf_documentation(pdf, analysis, images.get("formula_images") if images else None, samples)
 
         return bytes(pdf.output())
 
@@ -452,10 +454,17 @@ class ReportGenerator:
         return sorted(m_data, key=lambda x: x['name'])
 
     @classmethod
-    def _append_docx_documentation(cls, doc, analysis, formula_images: Optional[Dict[str, bytes]] = None):
+    def _append_docx_documentation(cls, doc, analysis, formula_images: Optional[Dict[str, bytes]] = None, samples: Optional[Dict[str, str]] = None):
         doc.add_heading("Complete Metric Documentation", level=1)
         doc.add_paragraph("Technical breakdown and explanation of the VoiceTracer scoring framework.")
         
+        if samples:
+            doc.add_heading("Samples used:", level=2)
+            for title, content in samples.items():
+                doc.add_heading(title, level=3)
+                doc.add_paragraph(content)
+            doc.add_page_break()
+
         metrics = cls._get_metric_data(analysis)
         for m in metrics:
             doc.add_heading(m['name'], level=2)
@@ -477,12 +486,23 @@ class ReportGenerator:
             p.add_run(m['meaning']).italic = True
 
     @classmethod
-    def _append_pdf_documentation(cls, pdf, analysis, formula_images: Optional[Dict[str, bytes]] = None):
+    def _append_pdf_documentation(cls, pdf, analysis, formula_images: Optional[Dict[str, bytes]] = None, samples: Optional[Dict[str, str]] = None):
         pdf.set_font("Helvetica", "B", 18)
         pdf.cell(0, 15, "Complete Metric Documentation", 0, 1)
         pdf.set_font("Helvetica", "I", 10)
         pdf.cell(0, 8, "Technical breakdown of the VoiceTracer scoring framework.", 0, 1)
         pdf.ln(5)
+
+        if samples:
+            pdf.set_font("Helvetica", "B", 14)
+            pdf.cell(0, 10, "Samples used:", 0, 1)
+            for title, content in samples.items():
+                pdf.set_font("Helvetica", "B", 11)
+                pdf.cell(0, 8, title, 0, 1)
+                pdf.set_font("Helvetica", "", 10)
+                pdf.multi_cell(0, 5, content)
+                pdf.ln(3)
+            pdf.add_page()
 
         metrics = cls._get_metric_data(analysis)
         for m in metrics:
