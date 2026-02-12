@@ -1992,6 +1992,16 @@ def render_repair_preview() -> None:
     metric_focus = focus_options[st.session_state.repair_metric_index]
     st.session_state.repair_metric = metric_focus
 
+    # --- Scores calculation ---
+    original_score = analysis.metrics_original.get(metric_focus, 0.0)
+    edited_score = analysis.metrics_edited.get(metric_focus, 0.0)
+    projected_score = _estimate_projected_score(
+        analysis,
+        metric_focus,
+        original_score,
+        edited_score,
+    )
+
     # --- Context header (focus + prev/next) ---
     header_left, header_mid, header_right = st.columns([2.2, 4.6, 2.2])
     with header_left:
@@ -2175,14 +2185,6 @@ function updateMouse(event) {{
     st.session_state.repair_metric_index = focus_options.index(metric_focus)
 
     # --- Scores header (keep existing) ---
-    original_score = analysis.metrics_original.get(metric_focus, 0.0)
-    edited_score = analysis.metrics_edited.get(metric_focus, 0.0)
-    projected_score = _estimate_projected_score(
-        analysis,
-        metric_focus,
-        original_score,
-        edited_score,
-    )
     score_left, score_mid, score_right = st.columns(3)
     with score_left:
         st.metric("AI source score", f"{original_score:.1f}")
