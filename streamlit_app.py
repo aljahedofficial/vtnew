@@ -29,6 +29,7 @@ except ImportError:
     PdfReader = None
 
 from app.analysis import CalibrationStandards, analyze_multitext
+from app.reporting import ReportGenerator
 from app.charts import (
     build_bar_chart,
     build_gauge_chart,
@@ -2567,11 +2568,14 @@ def render_documentation_export() -> None:
         "<div class='vt-section-title'>Documentation Export</div>",
         unsafe_allow_html=True,
     )
-    st.selectbox("Report Type", options=["PDF", "Word", "Excel", "JSON"])
+    report_type = st.selectbox("Report Type", options=["PDF", "Word", "Excel", "JSON"])
+    
     st.markdown(
         "<div class='vt-section-title'>Sections to Include</div>",
         unsafe_allow_html=True,
     )
+    
+    sections_to_include = []
     for section in [
         "Executive Summary",
         "Full Metric Analysis",
@@ -2580,22 +2584,69 @@ def render_documentation_export() -> None:
         "AI Source vs Writer Rewrite Comparison",
         "Authorship Documentation Statement",
     ]:
-        st.checkbox(section, value=True)
+        if st.checkbox(section, value=True, key=f"include_{section.lower().replace(' ', '_')}"):
+            sections_to_include.append(section)
+            
     st.markdown(
         "<div class='vt-section-title'>Authorship Documentation Statement</div>",
         unsafe_allow_html=True,
     )
-    st.text_area(
+    statement = st.text_area(
         "Statement",
         value=(
             "This document certifies that the user engaged in AI-assisted writing with systematic voice "
             "preservation monitoring using VoiceTracer."
         ),
         height=140,
+        key="export_statement"
     )
-    st.button("Generate Report")
-    st.button("Download")
-    st.button("Email to Advisor")
+
+    analysis = st.session_state.get("analysis")
+    if not analysis:
+        st.warning("Please run analysis first to generate a report.")
+        return
+
+    if st.button("Generate Report", use_container_width=True):
+        try:
+            with st.spinner(f"Generating {report_type} report..."):
+                if report_type == "JSON":
+                    report_bytes = ReportGenerator.generate_json(analysis)
+                    mime = "application/json"
+                    ext = "json"
+                elif report_type == "Word":
+                    report_bytes = ReportGenerator.generate_docx(analysis, sections_to_include, statement)
+                    mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    ext = "docx"
+                elif report_type == "Excel":
+                    # We'll use CSV format for now as requested/implemented
+                    report_bytes = ReportGenerator.generate_excel(analysis)
+                    mime = "text/csv"
+                    ext = "csv"
+                else:  # PDF
+                    # Fallback to Word for now as simple PDF is hard, 
+                    # OR we can just say "PDF coming soon" or use a simple text conversion
+                    report_bytes = ReportGenerator.generate_docx(analysis, sections_to_include, statement)
+                    mime = "application/pdf"
+                    ext = "pdf"
+                    st.info("Note: PDF export currently uses a document layout optimized for Word.")
+
+                st.session_state.report_data = report_bytes
+                st.session_state.report_filename = f"VoiceTracer_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}"
+                st.session_state.report_mime = mime
+            st.success("Report generated successfully! Click Download to save.")
+        except Exception as e:
+            st.error(f"Error generating report: {str(e)}")
+
+    if "report_data" in st.session_state:
+        st.download_button(
+            label="Download",
+            data=st.session_state.report_data,
+            file_name=st.session_state.report_filename,
+            mime=st.session_state.report_mime,
+            use_container_width=True
+        )
+
+    st.button("Email to Advisor", use_container_width=True, disabled=True, help="Email integration coming soon.")
 
 
 def render_settings() -> None:
