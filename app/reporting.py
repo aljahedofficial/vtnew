@@ -228,7 +228,7 @@ class ReportGenerator:
             pdf.set_font("Helvetica", "", 10)
             pdf.multi_cell(0, 8, statement)
 
-        return pdf.output()
+        return bytes(pdf.output())
 
     @classmethod
     def generate_excel(cls, analysis: AnalysisResult) -> bytes:
