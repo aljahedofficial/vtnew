@@ -2648,6 +2648,19 @@ def render_documentation_export() -> None:
                         st.warning(f"Could not include some visualizations: {str(img_err)}")
 
                 include_doc = "Complete Documentation (A-Z Metric Guide)" in sections_to_include
+                
+                if include_doc:
+                    try:
+                        from app.charts import render_latex_to_image
+                        from app.reporting import ReportGenerator
+                        
+                        formula_images = {}
+                        metrics_meta = ReportGenerator._get_metric_data(analysis)
+                        for m in metrics_meta:
+                            formula_images[m['id']] = render_latex_to_image(m['formula'])
+                        images["formula_images"] = formula_images
+                    except Exception as formula_err:
+                        st.warning(f"Could not render mathematical formulas: {str(formula_err)}")
 
                 if report_type == "JSON":
                     report_bytes = ReportGenerator.generate_json(analysis)

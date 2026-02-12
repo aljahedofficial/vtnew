@@ -245,3 +245,31 @@ def build_mini_gauge(score: float, bar_color: str) -> go.Figure:
     )
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=80)
     return fig
+
+
+def render_latex_to_image(latex_str: str) -> bytes:
+    """Render a LaTeX string to a PNG image using Plotly/Kaleido."""
+    import plotly.io as pio
+    
+    # Ensure it has $ for plotly MathJax if not already there
+    if not latex_str.startswith("$"):
+        latex_str = f"${latex_str}$"
+        
+    fig = go.Figure()
+    fig.add_annotation(
+        text=latex_str,
+        showarrow=False,
+        font=dict(size=32, color="black"),
+        xref="paper", yref="paper",
+        x=0.5, y=0.5
+    )
+    fig.update_layout(
+        width=800,
+        height=200,
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        margin=dict(l=10, r=10, t=10, b=10),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
+    return pio.to_image(fig, format="png", scale=2)

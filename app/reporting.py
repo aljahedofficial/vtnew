@@ -174,7 +174,7 @@ class ReportGenerator:
         # Complete Documentation Appendix
         if include_documentation:
             doc.add_page_break()
-            cls._append_docx_documentation(doc, analysis)
+            cls._append_docx_documentation(doc, analysis, images.get("formula_images") if images else None)
 
         # Save to Stream
         target = BytesIO()
@@ -350,13 +350,13 @@ class ReportGenerator:
         # Documentation Appendix
         if include_documentation:
             pdf.add_page()
-            cls._append_pdf_documentation(pdf, analysis)
+            cls._append_pdf_documentation(pdf, analysis, images.get("formula_images") if images else None)
 
         return bytes(pdf.output())
 
     @classmethod
     def _get_metric_data(cls, analysis: AnalysisResult) -> List[Dict[str, Any]]:
-        """Consolidated metric data for documentation using ASCII math for maximum compatibility."""
+        """Consolidated metric data for documentation using LaTeX for professional rendering."""
         res_map = {r.name: r for r in analysis.metric_results.values()}
         
         m_data = [
@@ -365,7 +365,7 @@ class ReportGenerator:
                 "name": "AI-ism Likelihood",
                 "purpose": "Detects formulaic AI-like phrases.",
                 "calc_plain": "Sums weighted AI-typical phrases (e.g., 'moreover') and divides by total word count.",
-                "formula": "L = (Sum(w_i * c_i) / N) * 100",
+                "formula": r"$$L = \frac{\sum (w_i \cdot c_i)}{N} \cdot 100$$",
                 "example": f"Found {res_map['AI-ism Likelihood'].details.get('total_weighted_count', 0)} weighted points in your rewrite ({analysis.edited_word_count} words).",
                 "human": 3.1,
                 "ai": 78.5,
@@ -376,7 +376,7 @@ class ReportGenerator:
                 "name": "Burstiness",
                 "purpose": "Measures sentence length variation and rhythm.",
                 "calc_plain": "Standard deviation of sentence lengths divided by the mean sentence length.",
-                "formula": "B = StdDev / Mean",
+                "formula": r"$$B = \frac{\sigma_{len}}{\mu_{len}}$$",
                 "example": f"Your sentences varied from {min(res_map['Burstiness'].details.get('sentence_lengths', [0]))} to {max(res_map['Burstiness'].details.get('sentence_lengths', [0]))} words.",
                 "human": 1.23,
                 "ai": 0.78,
@@ -387,7 +387,7 @@ class ReportGenerator:
                 "name": "Discourse Marker Density",
                 "purpose": "Measures use of structural signposting markers.",
                 "calc_plain": "Total transition words (e.g., 'therefore') per 100 words.",
-                "formula": "D = (Sum(Markers) / N) * 100",
+                "formula": r"$$D = \frac{\sum \text{Markers}}{N} \cdot 100$$",
                 "example": f"Detected {res_map['Discourse Marker Density'].details.get('total_markers', 0)} markers in your {analysis.edited_word_count}-word rewrite.",
                 "human": 8.0,
                 "ai": 18.0,
@@ -398,7 +398,7 @@ class ReportGenerator:
                 "name": "Epistemic Hedging",
                 "purpose": "Measures caution and nuance in claims.",
                 "calc_plain": "Excess hedging markers (weighted against certainty) per 100 words.",
-                "formula": "H = (max(0, hedges - 0.5 * certainty) / N) * 100",
+                "formula": r"$$H = \frac{\max(0, \text{hedges} - 0.5 \cdot \text{certainty})}{N} \cdot 100$$",
                 "example": f"Your rewrite used cautious phrasing to balance specificity.",
                 "human": 0.09,
                 "ai": 0.04,
@@ -409,7 +409,7 @@ class ReportGenerator:
                 "name": "Function Word Ratio",
                 "purpose": "Measures density of grammatical connector words.",
                 "calc_plain": "Total count of function words (DT, IN, PRP) over total words.",
-                "formula": "F = Sum(Function Words) / N",
+                "formula": r"$$F = \frac{\sum \text{Function Words}}{N}$$",
                 "example": f"Found {res_map['Function Word Ratio'].details.get('function_words', 0)} function words in your text.",
                 "human": 0.50,
                 "ai": 0.60,
@@ -420,7 +420,7 @@ class ReportGenerator:
                 "name": "Information Density",
                 "purpose": "Concentration of content substance and specificity.",
                 "calc_plain": "Weighted sum of content word ratio (70%) and proper noun ratio (30%).",
-                "formula": "I = 0.7 * (C/N) + 0.3 * (P/N)",
+                "formula": r"$$I = 0.7 \cdot \frac{C}{N} + 0.3 \cdot \frac{P}{N}$$",
                 "example": f"Your rewrite contains {res_map['Information Density'].details.get('content_words', 0)} content words and {res_map['Information Density'].details.get('proper_nouns', 0)} proper nouns.",
                 "human": 0.58,
                 "ai": 0.42,
@@ -431,7 +431,7 @@ class ReportGenerator:
                 "name": "Lexical Diversity",
                 "purpose": "Vocabulary richness and variety.",
                 "calc_plain": "Unique words divided by total words (TTR) or MTLD algorithm.",
-                "formula": "TTR = V / N",
+                "formula": r"$$TTR = \frac{V}{N}$$",
                 "example": f"Used {res_map['Lexical Diversity'].details.get('unique_words', 0)} unique words out of {analysis.edited_word_count}.",
                 "human": 0.55,
                 "ai": 0.42,
@@ -442,7 +442,7 @@ class ReportGenerator:
                 "name": "Syntactic Complexity",
                 "purpose": "Measures structural depth and clause use.",
                 "calc_plain": "Weighted sum of subordination ratio (60%) and length factor (40%).",
-                "formula": "S = 0.6 * R_sub + 0.4 * min(Mean/30, 1)",
+                "formula": r"$$S = 0.6 \cdot R_{sub} + 0.4 \cdot \min\left(\frac{Mean}{30}, 1\right)$$",
                 "example": f"Subordination ratio of {res_map['Syntactic Complexity'].details.get('subordination_ratio', 0)} with avg length {analysis.edited_word_count/max(1, analysis.edited_sentence_count):.2f}.",
                 "human": 0.54,
                 "ai": 0.64,
@@ -452,7 +452,7 @@ class ReportGenerator:
         return sorted(m_data, key=lambda x: x['name'])
 
     @classmethod
-    def _append_docx_documentation(cls, doc, analysis):
+    def _append_docx_documentation(cls, doc, analysis, formula_images: Optional[Dict[str, bytes]] = None):
         doc.add_heading("Complete Metric Documentation", level=1)
         doc.add_paragraph("Technical breakdown and explanation of the VoiceTracer scoring framework.")
         
@@ -462,14 +462,22 @@ class ReportGenerator:
             doc.add_paragraph(f"Definition/Purpose: ").add_run(m['purpose']).bold = True
             doc.add_paragraph(f"Plain-Text Calculation: {m['calc_plain']}")
             doc.add_paragraph(f"Example Calculation: {m['example']}")
-            doc.add_paragraph(f"Formula (LaTeX): {m['formula']}")
+            
+            # Use image if available, else plain text
+            if formula_images and m['id'] in formula_images:
+                doc.add_paragraph(f"Formula: ")
+                img_stream = BytesIO(formula_images[m['id']])
+                doc.add_picture(img_stream, width=Inches(4.0))
+            else:
+                doc.add_paragraph(f"Formula (LaTeX): {m['formula']}")
+
             doc.add_paragraph(f"Current Value Measured: {analysis.metrics_edited.get(m['name'], 0.0):.4f}")
             doc.add_paragraph(f"Ideal Human Standard: {m['human']} | AI Default: {m['ai']}")
             p = doc.add_paragraph(f"Interpretation: ")
             p.add_run(m['meaning']).italic = True
 
     @classmethod
-    def _append_pdf_documentation(cls, pdf, analysis):
+    def _append_pdf_documentation(cls, pdf, analysis, formula_images: Optional[Dict[str, bytes]] = None):
         pdf.set_font("Helvetica", "B", 18)
         pdf.cell(0, 15, "Complete Metric Documentation", 0, 1)
         pdf.set_font("Helvetica", "I", 10)
@@ -498,8 +506,15 @@ class ReportGenerator:
             
             pdf.set_font("Helvetica", "B", 10)
             pdf.write(5, "Formula: ")
-            pdf.set_font("Helvetica", "", 10)
-            pdf.write(5, f"{m['formula']}\n")
+            pdf.ln(2)
+            if formula_images and m['id'] in formula_images:
+                img_stream = BytesIO(formula_images[m['id']])
+                # Center and scale formula image
+                pdf.image(img_stream, x=pdf.w/4, w=pdf.w/2) 
+            else:
+                pdf.set_font("Helvetica", "", 10)
+                pdf.write(5, f"{m['formula']}")
+            pdf.ln(5)
             
             pdf.set_font("Helvetica", "B", 10)
             pdf.write(5, "Current Value: ")
