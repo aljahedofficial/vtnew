@@ -356,7 +356,7 @@ class ReportGenerator:
 
     @classmethod
     def _get_metric_data(cls, analysis: AnalysisResult) -> List[Dict[str, Any]]:
-        """Consolidated metric data for documentation."""
+        """Consolidated metric data for documentation using Unicode math for compatibility."""
         res_map = {r.name: r for r in analysis.metric_results.values()}
         
         m_data = [
@@ -365,7 +365,7 @@ class ReportGenerator:
                 "name": "AI-ism Likelihood",
                 "purpose": "Detects formulaic AI-like phrases.",
                 "calc_plain": "Sums weighted AI-typical phrases (e.g., 'moreover') and divides by total word count.",
-                "formula": "$$L = (\\sum (w_i \\cdot c_i) / N) \\cdot 100$$",
+                "formula": "L = (Σ (wᵢ × cᵢ) / N) × 100",
                 "example": f"Found {res_map['AI-ism Likelihood'].details.get('total_weighted_count', 0)} weighted points in your rewrite ({analysis.edited_word_count} words).",
                 "human": 3.1,
                 "ai": 78.5,
@@ -376,7 +376,7 @@ class ReportGenerator:
                 "name": "Burstiness",
                 "purpose": "Measures sentence length variation and rhythm.",
                 "calc_plain": "Standard deviation of sentence lengths divided by the mean sentence length.",
-                "formula": "$$B = \\sigma_{len} / \\mu_{len}$$",
+                "formula": "B = σ_len / μ_len",
                 "example": f"Your sentences varied from {min(res_map['Burstiness'].details.get('sentence_lengths', [0]))} to {max(res_map['Burstiness'].details.get('sentence_lengths', [0]))} words.",
                 "human": 1.23,
                 "ai": 0.78,
@@ -387,7 +387,7 @@ class ReportGenerator:
                 "name": "Discourse Marker Density",
                 "purpose": "Measures use of structural signposting markers.",
                 "calc_plain": "Total transition words (e.g., 'therefore') per 100 words.",
-                "formula": "$$D = (\\sum \\text{Markers} / N) \\cdot 100$$",
+                "formula": "D = (Σ Markers / N) × 100",
                 "example": f"Detected {res_map['Discourse Marker Density'].details.get('total_markers', 0)} markers in your {analysis.edited_word_count}-word rewrite.",
                 "human": 8.0,
                 "ai": 18.0,
@@ -398,7 +398,7 @@ class ReportGenerator:
                 "name": "Epistemic Hedging",
                 "purpose": "Measures caution and nuance in claims.",
                 "calc_plain": "Excess hedging markers (weighted against certainty) per 100 words.",
-                "formula": "$$H = (\\max(0, \\text{hedges} - 0.5 \\cdot \\text{certainty}) / N) \\cdot 100$$",
+                "formula": "H = (max(0, hedges - 0.5 × certainty) / N) × 100",
                 "example": f"Your rewrite used cautious phrasing to balance specificity.",
                 "human": 0.09,
                 "ai": 0.04,
@@ -409,7 +409,7 @@ class ReportGenerator:
                 "name": "Function Word Ratio",
                 "purpose": "Measures density of grammatical connector words.",
                 "calc_plain": "Total count of function words (DT, IN, PRP) over total words.",
-                "formula": "$$F = \\sum \\text{Function Words} / N$$",
+                "formula": "F = Σ Function Words / N",
                 "example": f"Found {res_map['Function Word Ratio'].details.get('function_words', 0)} function words in your text.",
                 "human": 0.50,
                 "ai": 0.60,
@@ -420,7 +420,7 @@ class ReportGenerator:
                 "name": "Information Density",
                 "purpose": "Concentration of content substance and specificity.",
                 "calc_plain": "Weighted sum of content word ratio (70%) and proper noun ratio (30%).",
-                "formula": "$$I = 0.7 \\cdot (C/N) + 0.3 \\cdot (P/N)$$",
+                "formula": "I = 0.7 × (C/N) + 0.3 × (P/N)",
                 "example": f"Your rewrite contains {res_map['Information Density'].details.get('content_words', 0)} content words and {res_map['Information Density'].details.get('proper_nouns', 0)} proper nouns.",
                 "human": 0.58,
                 "ai": 0.42,
@@ -431,7 +431,7 @@ class ReportGenerator:
                 "name": "Lexical Diversity",
                 "purpose": "Vocabulary richness and variety.",
                 "calc_plain": "Unique words divided by total words (TTR) or MTLD algorithm.",
-                "formula": "$$TTR = V / N$$",
+                "formula": "TTR = V / N",
                 "example": f"Used {res_map['Lexical Diversity'].details.get('unique_words', 0)} unique words out of {analysis.edited_word_count}.",
                 "human": 0.55,
                 "ai": 0.42,
@@ -442,7 +442,7 @@ class ReportGenerator:
                 "name": "Syntactic Complexity",
                 "purpose": "Measures structural depth and clause use.",
                 "calc_plain": "Weighted sum of subordination ratio (60%) and length factor (40%).",
-                "formula": "$$S = 0.6 \\cdot R_{sub} + 0.4 \\cdot \\min(\\mu_{len}/30, 1)$$",
+                "formula": "S = 0.6 × R_sub + 0.4 × min(μ_len/30, 1)",
                 "example": f"Subordination ratio of {res_map['Syntactic Complexity'].details.get('subordination_ratio', 0)} with avg length {analysis.edited_word_count/max(1, analysis.edited_sentence_count):.2f}.",
                 "human": 0.54,
                 "ai": 0.64,
