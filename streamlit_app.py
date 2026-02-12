@@ -1995,10 +1995,156 @@ def render_repair_preview() -> None:
     # --- Context header (focus + prev/next) ---
     header_left, header_mid, header_right = st.columns([2.2, 4.6, 2.2])
     with header_left:
-        st.markdown(
-            f"<div class='vt-muted'><b>Current focus:</b> {html.escape(metric_focus)}</div>",
-            unsafe_allow_html=True,
-        )
+        html_card = f"""
+<style>
+.custom-card {{
+  width: 100%;
+  height: 240px;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white;
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background-color: #1e1b4b;
+}}
+.custom-card::before {{
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(138, 43, 226, 0.3), transparent 50%);
+  pointer-events: none;
+  transition: opacity 0.3s;
+  opacity: 0;
+}}
+.custom-card:hover::before {{
+  opacity: 1;
+}}
+.custom-card:hover {{
+  transform: perspective(1000px) rotateX(5deg) rotateY(5deg);
+  transition: transform 0.3s;
+}}
+.header {{
+  padding: 10px;
+  text-align: center;
+  position: relative;
+}}
+.label {{
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #ccc;
+}}
+.title {{
+  font-size: 24px;
+  font-weight: bold;
+  margin: 5px 0;
+}}
+.status-dot {{
+  width: 10px;
+  height: 10px;
+  background: green;
+  border-radius: 50%;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  animation: ripple 2s infinite;
+}}
+@keyframes ripple {{
+  0% {{ transform: scale(1); opacity: 1; }}
+  100% {{ transform: scale(2); opacity: 0; }}
+}}
+.body {{
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}}
+.bar-chart {{
+  display: flex;
+  align-items: end;
+  gap: 5px;
+  height: 100px;
+}}
+.bar {{
+  width: 20px;
+  background: linear-gradient(to top, indigo, purple);
+  border-radius: 2px;
+  animation: pulse 1s ease-in-out infinite alternate;
+}}
+.bar:nth-child(odd) {{ background: linear-gradient(to top, pink, purple); }}
+@keyframes pulse {{
+  0% {{ opacity: 0.7; }}
+  100% {{ opacity: 1; }}
+}}
+.footer {{
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}}
+.metric {{
+  text-align: center;
+  font-size: 12px;
+}}
+.metric div:first-child {{ font-weight: bold; }}
+</style>
+<div class="custom-card" onmousemove="updateMouse(event)">
+  <div class="header">
+    <div class="label">Current focus</div>
+    <div class="title">{metric_focus}</div>
+    <div class="status-dot"></div>
+  </div>
+  <div class="body">
+    <div class="bar-chart">
+      <div class="bar" style="height: 20px;"></div>
+      <div class="bar" style="height: 40px;"></div>
+      <div class="bar" style="height: 60px;"></div>
+      <div class="bar" style="height: 80px;"></div>
+      <div class="bar" style="height: 100px;"></div>
+      <div class="bar" style="height: 80px;"></div>
+      <div class="bar" style="height: 60px;"></div>
+      <div class="bar" style="height: 40px;"></div>
+      <div class="bar" style="height: 20px;"></div>
+      <div class="bar" style="height: 30px;"></div>
+      <div class="bar" style="height: 50px;"></div>
+      <div class="bar" style="height: 70px;"></div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="metric">
+      <div>AI Source</div>
+      <div>{format_metric(original_score)}</div>
+    </div>
+    <div class="metric">
+      <div>Writer Rewrite</div>
+      <div>{format_metric(edited_score)}</div>
+    </div>
+    <div class="metric">
+      <div>Projected</div>
+      <div>{format_metric(projected_score)}</div>
+    </div>
+  </div>
+</div>
+<script>
+function updateMouse(event) {{
+  const card = event.currentTarget;
+  const rect = card.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * 100;
+  const y = ((event.clientY - rect.top) / rect.height) * 100;
+  card.style.setProperty('--mouse-x', x + '%');
+  card.style.setProperty('--mouse-y', y + '%');
+}}
+</script>
+        """
+        st.markdown(html_card, unsafe_allow_html=True)
     with header_mid:
         st.caption("Use Previous / Next to step through compromised metrics.")
     with header_right:
