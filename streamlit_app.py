@@ -1127,8 +1127,16 @@ def run_analysis() -> None:
         prompt_text = str(prompt_text or "")
 
     # Guard against empty input causing downstream ValueError in analyzer
-    if not (human_text.strip() and source_text.strip() and ai_text.strip() and paraphrase_text.strip() and prompt_text.strip()):
-        st.error("Analysis failed: all four text sections (human, source, AI, paraphrase) and the prompt are required.")
+    if not (
+        human_text.strip()
+        and source_text.strip()
+        and ai_text.strip()
+        and paraphrase_text.strip()
+        and prompt_text.strip()
+    ):
+        st.error(
+            "Analysis failed: all four text sections (human, source, AI, paraphrase) and the prompt are required."
+        )
         st.session_state.analysis = None
         return
 
@@ -1146,7 +1154,9 @@ def run_analysis() -> None:
         st.session_state.analysis = None
     except Exception:
         # Generic fallback to avoid crashing the app; details are in logs
-        st.error("Analysis failed with an unexpected error. Check the server logs for details.")
+        st.error(
+            "Analysis failed with an unexpected error. Check the server logs for details."
+        )
         st.session_state.analysis = None
 
 
@@ -1923,7 +1933,8 @@ def render_dashboard_screen() -> None:
 
     elif section == "Visual Evidence":
         st.markdown(
-            "<div class='vt-section-title'>Visual Evidence</div>", unsafe_allow_html=True,
+            "<div class='vt-section-title'>Visual Evidence</div>",
+            unsafe_allow_html=True,
         )
         st.caption(
             "Sentence rhythm across the text (green: AI source, red: writer rewrite)."
@@ -2206,32 +2217,19 @@ function updateMouse(event) {{
     with header_right:
         prev_disabled = st.session_state.repair_metric_index <= 0
         next_disabled = st.session_state.repair_metric_index >= len(focus_options) - 1
-        button_html = """
-<div style="display: flex; gap: 10px; justify-content: flex-end;">
-    <button style="background: #e5e7eb; color: #374151; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; cursor: pointer; transition: background 0.3s; opacity: {opacity_prev}; pointer-events: {pointer_prev};" onclick="handleClick('previous')"{disabled_prev}>Previous</button>
-    <button style="background: white; color: #111827; font-weight: 600; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.3s; opacity: {opacity_next}; pointer-events: {pointer_next};" onclick="handleClick('next')"{disabled_next}>Next compromised metric</button>
-</div>
-<script>
-function handleClick(action) {{
-    window.parent.postMessage({{type: 'streamlit:setComponentValue', value: action}}, '*');
-}}
-</script>
-""".format(
-    opacity_prev='0.5' if prev_disabled else '1',
-    pointer_prev='none' if prev_disabled else 'auto',
-    disabled_prev=' disabled' if prev_disabled else '',
-    opacity_next='0.5' if next_disabled else '1',
-    pointer_next='none' if next_disabled else 'auto',
-    disabled_next=' disabled' if next_disabled else '',
-)
-        action = components.html(button_html, height=150)
-
-        if action == 'previous':
-            st.session_state.repair_metric_index -= 1
-            st.rerun()
-        elif action == 'next':
-            st.session_state.repair_metric_index += 1
-            st.rerun()
+        prev_col, next_col = st.columns(2)
+        with prev_col:
+            if st.button("Previous", disabled=prev_disabled, use_container_width=True):
+                st.session_state.repair_metric_index -= 1
+                st.rerun()
+        with next_col:
+            if st.button(
+                "Next compromised metric",
+                disabled=next_disabled,
+                use_container_width=True,
+            ):
+                st.session_state.repair_metric_index += 1
+                st.rerun()
 
     # Allow direct jump (keeps existing ability to change focus)
     metric_focus = st.selectbox(
@@ -2566,11 +2564,13 @@ def render_calibration(local_storage: LocalStorage | None) -> None:
 
 def render_documentation_export() -> None:
     st.markdown(
-        "<div class='vt-section-title'>Documentation Export</div>", unsafe_allow_html=True,
+        "<div class='vt-section-title'>Documentation Export</div>",
+        unsafe_allow_html=True,
     )
     st.selectbox("Report Type", options=["PDF", "Word", "Excel", "JSON"])
     st.markdown(
-        "<div class='vt-section-title'>Sections to Include</div>", unsafe_allow_html=True
+        "<div class='vt-section-title'>Sections to Include</div>",
+        unsafe_allow_html=True,
     )
     for section in [
         "Executive Summary",
@@ -2582,7 +2582,8 @@ def render_documentation_export() -> None:
     ]:
         st.checkbox(section, value=True)
     st.markdown(
-        "<div class='vt-section-title'>Authorship Documentation Statement</div>", unsafe_allow_html=True,
+        "<div class='vt-section-title'>Authorship Documentation Statement</div>",
+        unsafe_allow_html=True,
     )
     st.text_area(
         "Statement",
