@@ -1114,6 +1114,7 @@ def run_analysis() -> None:
     source_text = st.session_state.source_text
     ai_text = st.session_state.ai_text
     paraphrase_text = st.session_state.paraphrase_text
+    prompt_text = st.session_state.prompt_text
     if not isinstance(human_text, str):
         human_text = str(human_text or "")
     if not isinstance(source_text, str):
@@ -1122,18 +1123,40 @@ def run_analysis() -> None:
         ai_text = str(ai_text or "")
     if not isinstance(paraphrase_text, str):
         paraphrase_text = str(paraphrase_text or "")
-    st.session_state.analysis = analyze_multitext(
-        human_text,
-        source_text,
-        ai_text,
-        paraphrase_text,
-        custom_standards=custom_standards,
-    )
+    if not isinstance(prompt_text, str):
+        prompt_text = str(prompt_text or "")
+
+    # Guard against empty input causing downstream ValueError in analyzer
+    if not (human_text.strip() and source_text.strip() and ai_text.strip() and paraphrase_text.strip() and prompt_text.strip()):
+        st.error("Analysis failed: all four text sections (human, source, AI, paraphrase) and the prompt are required.")
+        st.session_state.analysis = None
+        return
+
+    try:
+        st.session_state.analysis = analyze_multitext(
+            human_text,
+            source_text,
+            ai_text,
+            paraphrase_text,
+            custom_standards=custom_standards,
+        )
+    except ValueError as e:
+        # Likely raised by preprocessor on empty text; surface a friendly message
+        st.error(f"Analysis failed: {str(e)}")
+        st.session_state.analysis = None
+    except Exception:
+        # Generic fallback to avoid crashing the app; details are in logs
+        st.error("Analysis failed with an unexpected error. Check the server logs for details.")
+        st.session_state.analysis = None
 
 
 def run_analysis_with_notice() -> None:
     run_analysis()
-    st.session_state.analysis_notice = True
+    # Only show the notice if analysis succeeded
+    if st.session_state.analysis is not None:
+        st.session_state.analysis_notice = True
+    else:
+        st.session_state.analysis_notice = False
 
 
 def render_header() -> None:
