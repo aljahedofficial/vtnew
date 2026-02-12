@@ -2160,19 +2160,72 @@ function updateMouse(event) {{
     with header_right:
         prev_disabled = st.session_state.repair_metric_index <= 0
         next_disabled = st.session_state.repair_metric_index >= len(focus_options) - 1
-        prev_col, next_col = st.columns(2)
-        with prev_col:
-            if st.button("Previous", disabled=prev_disabled, use_container_width=True):
-                st.session_state.repair_metric_index -= 1
-                st.rerun()
-        with next_col:
-            if st.button(
-                "Next compromised metric",
-                disabled=next_disabled,
-                use_container_width=True,
-            ):
-                st.session_state.repair_metric_index += 1
-                st.rerun()
+        button_html = f"""
+<style>
+.button-container {{
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}}
+.prev-btn {{
+    background: #e5e7eb;
+    color: #374151;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.3s;
+    opacity: {'0.5' if prev_disabled else '1'};
+    pointer-events: {'none' if prev_disabled else 'auto'};
+}}
+.prev-btn:hover:not(:disabled) {{
+    background: #d1d5db;
+}}
+.prev-btn:focus {{
+    outline: 2px solid #3b82f6;
+}}
+.next-btn {{
+    background: white;
+    color: #111827;
+    font-weight: 600;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 10px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.3s;
+    opacity: {'0.5' if next_disabled else '1'};
+    pointer-events: {'none' if next_disabled else 'auto'};
+}}
+.next-btn:hover:not(:disabled) {{
+    background: #f9fafb;
+    transform: scale(1.02);
+}}
+.next-btn:active {{
+    transform: scale(0.98);
+}}
+.next-btn:focus {{
+    outline: 2px solid #3b82f6;
+}}
+</style>
+<div class="button-container">
+    <button class="prev-btn" onclick="handleClick('previous')" {'disabled' if prev_disabled else ''}>Previous</button>
+    <button class="next-btn" onclick="handleClick('next')" {'disabled' if next_disabled else ''}>Next<br>compromised metric</button>
+</div>
+<script>
+function handleClick(action) {{
+    window.parent.postMessage({{type: 'streamlit:setComponentValue', value: action}}, '*');
+}}
+</script>
+        """
+        action = components.html(button_html, height=60)
+        if action == 'previous':
+            st.session_state.repair_metric_index -= 1
+            st.rerun()
+        elif action == 'next':
+            st.session_state.repair_metric_index += 1
+            st.rerun()
 
     # Allow direct jump (keeps existing ability to change focus)
     metric_focus = st.selectbox(
