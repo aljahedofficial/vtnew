@@ -2206,18 +2206,25 @@ function updateMouse(event) {{
     with header_right:
         prev_disabled = st.session_state.repair_metric_index <= 0
         next_disabled = st.session_state.repair_metric_index >= len(focus_options) - 1
-        button_html = f"""
+        button_html = """
 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-    <button style="background: #e5e7eb; color: #374151; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; cursor: pointer; transition: background 0.3s; opacity: {'0.5' if prev_disabled else '1'}; pointer-events: {'none' if prev_disabled else 'auto'};" onclick="handleClick('previous')" {'disabled' if prev_disabled else ''}>Previous</button>
-    <button style="background: white; color: #111827; font-weight: 600; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.3s; opacity: {'0.5' if next_disabled else '1'}; pointer-events: {'none' if next_disabled else 'auto'};" onclick="handleClick('next')" {'disabled' if next_disabled else ''}>Next compromised metric</button>
+    <button style="background: #e5e7eb; color: #374151; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; cursor: pointer; transition: background 0.3s; opacity: {opacity_prev}; pointer-events: {pointer_prev};" onclick="handleClick('previous')"{disabled_prev}>Previous</button>
+    <button style="background: white; color: #111827; font-weight: 600; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.3s; opacity: {opacity_next}; pointer-events: {pointer_next};" onclick="handleClick('next')"{disabled_next}>Next compromised metric</button>
 </div>
 <script>
 function handleClick(action) {{
     window.parent.postMessage({{type: 'streamlit:setComponentValue', value: action}}, '*');
 }}
 </script>
-        """
-        action = components.html(button_html, height=150, key="repair_nav_buttons")
+""".format(
+    opacity_prev='0.5' if prev_disabled else '1',
+    pointer_prev='none' if prev_disabled else 'auto',
+    disabled_prev=' disabled' if prev_disabled else '',
+    opacity_next='0.5' if next_disabled else '1',
+    pointer_next='none' if next_disabled else 'auto',
+    disabled_next=' disabled' if next_disabled else '',
+)
+        action = components.html(button_html, height=150)
 
         if action == 'previous':
             st.session_state.repair_metric_index -= 1
