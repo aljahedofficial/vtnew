@@ -1997,7 +1997,31 @@ def render_repair_preview() -> None:
         for metric in METRICS
         if analysis.metric_results[metric["key"]].verdict == "Compromised"
     ]
-    focus_options = compromised or [m["label"] for m in METRICS]
+
+    # Preferred navigation order for the repair workflow
+    preferred_order = ["Burstiness", "AI-ism Likelihood", "Information Density"]
+
+    def order_labels(labels: List[str]) -> List[str]:
+        # Put preferred metrics first (in the preferred order), then the rest in METRICS order
+        ordered: List[str] = []
+        remaining = [l for l in labels if l not in preferred_order]
+        for p in preferred_order:
+            if p in labels:
+                ordered.append(p)
+        # Append remaining metrics preserving METRICS order
+        for m in METRICS:
+            lbl = m["label"]
+            if lbl in remaining:
+                ordered.append(lbl)
+        return ordered
+
+    if compromised:
+        # Only include compromised metrics, but order them with preferred metrics first
+        focus_options = order_labels(compromised)
+    else:
+        # No compromised metrics — show all metrics but favor preferred ones at the front
+        all_labels = [m["label"] for m in METRICS]
+        focus_options = order_labels(all_labels)
 
     if "repair_metric_index" not in st.session_state:
         # Keep legacy focus if it exists.
